@@ -44,7 +44,20 @@ const Riders = memo(function Riders() {
 
   const handleSubmit = async () => {
     try {
-      await axios.post('http://127.0.0.1:8000/api/riders', formDataRef.current, { timeout: 10000 })
+      const submitData = {
+        first_name: formDataRef.current.first_name,
+        last_name: formDataRef.current.last_name,
+        email: formDataRef.current.email,
+        per_parcel_payout: formDataRef.current.per_parcel_payout,
+        address: {
+          city: formDataRef.current.city,
+          address: formDataRef.current.address,
+          country: formDataRef.current.country,
+          state: formDataRef.current.state,
+          zipcode: formDataRef.current.zipcode
+        }
+      }
+      await axios.post('http://127.0.0.1:8000/api/riders', submitData, { timeout: 10000 })
       setOpen(false)
       formDataRef.current = {
         first_name: '',
