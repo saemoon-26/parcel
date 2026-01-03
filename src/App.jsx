@@ -34,6 +34,7 @@ function AppContent() {
           <span></span>
           <span></span>
           <span></span>
+          <span></span>
         </button>
         <h1 className="app-title">Parcel Management System</h1>
       </header>
