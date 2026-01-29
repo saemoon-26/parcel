@@ -6,6 +6,8 @@ import Products from './components/Products/Products'
 import Riders from './components/Riders/Riders'
 import Merchants from './components/Merchants/Merchants'
 import Settings from './components/Settings/Settings'
+import TrackParcel from './components/TrackParcel/TrackParcel'
+import RiderDashboard from './components/RiderDashboard/RiderDashboard'
 
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -17,6 +19,8 @@ function AppContent() {
     { id: '/products', label: 'Products', icon: '📦' },
     { id: '/riders', label: 'Riders', icon: '🚴' },
     { id: '/merchants', label: 'Merchants', icon: '🏪' },
+    { id: '/rider-dashboard', label: 'Rider Dashboard', icon: '🚚' },
+    { id: '/track', label: 'Track Your Parcel', icon: '🔍' },
     { id: '/settings', label: 'Settings', icon: '⚙️' }
   ]
 
@@ -69,6 +73,8 @@ function AppContent() {
             <Route path="/products" element={<Products />} />
             <Route path="/riders" element={<Riders />} />
             <Route path="/merchants" element={<Merchants />} />
+            <Route path="/rider-dashboard" element={<RiderDashboard />} />
+            <Route path="/track" element={<TrackParcel />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </div>
