@@ -1,7 +1,19 @@
 import { useState, useEffect, useMemo, memo, useRef, useCallback } from 'react'
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Box, IconButton, Tooltip } from '@mui/material'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Box, IconButton, Tooltip, Chip, Select, MenuItem, FormControl, InputLabel } from '@mui/material'
 import { Edit, Delete } from '@mui/icons-material'
 import axios from 'axios'
+
+const CITIES = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala', 'Hyderabad', 'Sukkur', 'Bahawalpur', 'Sargodha', 'Abbottabad', 'Mardan', 'Gujrat', 'Larkana', 'Sheikhupura', 'Rahim Yar Khan']
+const STATES = ['Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan', 'Gilgit-Baltistan', 'Azad Kashmir', 'Islamabad Capital Territory']
+const COUNTRIES = ['Pakistan', 'India', 'Bangladesh', 'Afghanistan', 'United States', 'United Kingdom', 'Canada', 'Australia', 'UAE', 'Saudi Arabia']
+
+const CITY_ZIPCODES = {
+  'Karachi': '75000', 'Lahore': '54000', 'Islamabad': '44000', 'Rawalpindi': '46000',
+  'Faisalabad': '38000', 'Multan': '60000', 'Peshawar': '25000', 'Quetta': '87000',
+  'Sialkot': '51310', 'Gujranwala': '52250', 'Hyderabad': '71000', 'Sukkur': '65200',
+  'Bahawalpur': '63100', 'Sargodha': '40100', 'Abbottabad': '22010', 'Mardan': '23200',
+  'Gujrat': '50700', 'Larkana': '77150', 'Sheikhupura': '39350', 'Rahim Yar Khan': '64200'
+}
 
 const Riders = memo(function Riders() {
   const [riders, setRiders] = useState([])
@@ -9,6 +21,7 @@ const Riders = memo(function Riders() {
   const [open, setOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editingRider, setEditingRider] = useState(null)
+  const [zipcode, setZipcode] = useState('')
   const formDataRef = useRef({
     first_name: '',
     last_name: '',
@@ -40,6 +53,11 @@ const Riders = memo(function Riders() {
 
   const handleFieldChange = (field) => (e) => {
     formDataRef.current[field] = e.target.value
+    if (field === 'city') {
+      const zip = CITY_ZIPCODES[e.target.value] || ''
+      formDataRef.current.zipcode = zip
+      setZipcode(zip)
+    }
   }
 
   const handleSubmit = async () => {
@@ -87,6 +105,8 @@ const Riders = memo(function Riders() {
 
   const handleEdit = useCallback((rider) => {
     setEditingRider(rider)
+    const zip = rider.address?.zipcode || ''
+    setZipcode(zip)
     formDataRef.current = {
       first_name: rider.first_name || '',
       last_name: rider.last_name || '',
@@ -96,7 +116,7 @@ const Riders = memo(function Riders() {
       address: rider.address?.address || '',
       country: rider.address?.country || '',
       state: rider.address?.state || '',
-      zipcode: rider.address?.zipcode || ''
+      zipcode: zip
     }
     setEditOpen(true)
   }, [])
@@ -163,6 +183,7 @@ const Riders = memo(function Riders() {
               <TableCell style={{color: 'white'}}>State</TableCell>
               <TableCell style={{color: 'white'}}>Country</TableCell>
               <TableCell style={{color: 'white'}}>Zipcode</TableCell>
+              <TableCell style={{color: 'white'}}>Assigned Parcels</TableCell>
               <TableCell style={{color: 'white'}}>Controls</TableCell>
             </TableRow>
           </TableHead>
@@ -180,6 +201,13 @@ const Riders = memo(function Riders() {
                 <TableCell>{rider.address?.country || 'N/A'}</TableCell>
                 <TableCell>{rider.address?.zipcode || 'N/A'}</TableCell>
                 <TableCell>
+                  <Chip 
+                    label={rider.assigned_parcels_count || 0} 
+                    color={rider.assigned_parcels_count > 0 ? 'primary' : 'default'}
+                    size="small"
+                  />
+                </TableCell>
+                <TableCell>
                   <Box display="flex" gap={1}>
                     <Tooltip title="Edit Rider">
                       <IconButton size="small" color="primary" onClick={() => handleEdit(rider)}>
@@ -196,7 +224,7 @@ const Riders = memo(function Riders() {
               </TableRow>
             )) : (
               <TableRow>
-                <TableCell colSpan={11} style={{textAlign: 'center'}}>
+                <TableCell colSpan={12} style={{textAlign: 'center'}}>
                   No riders available
                 </TableCell>
               </TableRow>
@@ -253,18 +281,18 @@ const Riders = memo(function Riders() {
               fullWidth
             />
             <Box display="flex" gap={2}>
-              <TextField
-                label="City"
-                defaultValue={formDataRef.current.city}
-                onChange={handleFieldChange('city')}
-                fullWidth
-              />
-              <TextField
-                label="State"
-                defaultValue={formDataRef.current.state}
-                onChange={handleFieldChange('state')}
-                fullWidth
-              />
+              <FormControl fullWidth>
+                <InputLabel>City</InputLabel>
+                <Select defaultValue={formDataRef.current.city} onChange={handleFieldChange('city')} label="City">
+                  {CITIES.map(city => <MenuItem key={city} value={city}>{city}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>State</InputLabel>
+                <Select defaultValue={formDataRef.current.state} onChange={handleFieldChange('state')} label="State">
+                  {STATES.map(state => <MenuItem key={state} value={state}>{state}</MenuItem>)}
+                </Select>
+              </FormControl>
             </Box>
             <TextField
               label="Address"
@@ -275,16 +303,19 @@ const Riders = memo(function Riders() {
               rows={2}
             />
             <Box display="flex" gap={2}>
-              <TextField
-                label="Country"
-                defaultValue={formDataRef.current.country}
-                onChange={handleFieldChange('country')}
-                fullWidth
-              />
+              <FormControl fullWidth>
+                <InputLabel>Country</InputLabel>
+                <Select defaultValue={formDataRef.current.country} onChange={handleFieldChange('country')} label="Country">
+                  {COUNTRIES.map(country => <MenuItem key={country} value={country}>{country}</MenuItem>)}
+                </Select>
+              </FormControl>
               <TextField
                 label="Zipcode"
-                defaultValue={formDataRef.current.zipcode}
-                onChange={handleFieldChange('zipcode')}
+                value={zipcode}
+                onChange={(e) => {
+                  formDataRef.current.zipcode = e.target.value
+                  setZipcode(e.target.value)
+                }}
                 fullWidth
               />
             </Box>
@@ -329,18 +360,18 @@ const Riders = memo(function Riders() {
               fullWidth
             />
             <Box display="flex" gap={2}>
-              <TextField
-                label="City"
-                defaultValue={formDataRef.current.city}
-                onChange={handleFieldChange('city')}
-                fullWidth
-              />
-              <TextField
-                label="State"
-                defaultValue={formDataRef.current.state}
-                onChange={handleFieldChange('state')}
-                fullWidth
-              />
+              <FormControl fullWidth>
+                <InputLabel>City</InputLabel>
+                <Select defaultValue={formDataRef.current.city} onChange={handleFieldChange('city')} label="City">
+                  {CITIES.map(city => <MenuItem key={city} value={city}>{city}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>State</InputLabel>
+                <Select defaultValue={formDataRef.current.state} onChange={handleFieldChange('state')} label="State">
+                  {STATES.map(state => <MenuItem key={state} value={state}>{state}</MenuItem>)}
+                </Select>
+              </FormControl>
             </Box>
             <TextField
               label="Address"
@@ -351,16 +382,19 @@ const Riders = memo(function Riders() {
               rows={2}
             />
             <Box display="flex" gap={2}>
-              <TextField
-                label="Country"
-                defaultValue={formDataRef.current.country}
-                onChange={handleFieldChange('country')}
-                fullWidth
-              />
+              <FormControl fullWidth>
+                <InputLabel>Country</InputLabel>
+                <Select defaultValue={formDataRef.current.country} onChange={handleFieldChange('country')} label="Country">
+                  {COUNTRIES.map(country => <MenuItem key={country} value={country}>{country}</MenuItem>)}
+                </Select>
+              </FormControl>
               <TextField
                 label="Zipcode"
-                defaultValue={formDataRef.current.zipcode}
-                onChange={handleFieldChange('zipcode')}
+                value={zipcode}
+                onChange={(e) => {
+                  formDataRef.current.zipcode = e.target.value
+                  setZipcode(e.target.value)
+                }}
                 fullWidth
               />
             </Box>
