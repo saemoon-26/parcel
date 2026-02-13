@@ -1,13 +1,37 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { TextField, Button, Box, Card, CardContent, Typography, Stepper, Step, StepLabel, Alert } from '@mui/material'
 import { LocalShipping, CheckCircle, Inventory, LocationOn } from '@mui/icons-material'
+import LiveTracking from './LiveTracking'
 
 const TrackParcel = () => {
+  const navigate = useNavigate()
   const [trackingCode, setTrackingCode] = useState('')
   const [parcelData, setParcelData] = useState(null)
   const [error, setError] = useState('')
+  const [showLiveTracking, setShowLiveTracking] = useState(false)
 
   const statusSteps = ['pending', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered']
+
+  // Handle browser back button
+  useEffect(() => {
+    const handlePopState = () => {
+      if (showLiveTracking) {
+        setShowLiveTracking(false)
+        window.history.pushState(null, '', window.location.pathname)
+      }
+    }
+
+    if (showLiveTracking) {
+      window.history.pushState(null, '', window.location.pathname)
+    }
+
+    window.addEventListener('popstate', handlePopState)
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [showLiveTracking])
 
   const handleTrack = async () => {
     setError('')
@@ -33,7 +57,13 @@ const TrackParcel = () => {
       
       const data = await response.json()
       console.log('Parcel data:', data)
-      setParcelData(data.data || data)
+      const parcel = data.data || data
+      setParcelData(parcel)
+      
+      // Show live tracking if status is out_for_delivery
+      if (parcel.parcel_status?.toLowerCase() === 'out_for_delivery') {
+        setShowLiveTracking(true)
+      }
     } catch (err) {
       console.error('Tracking error:', err)
       setError('Parcel not found. Please check your tracking code.')
@@ -45,6 +75,16 @@ const TrackParcel = () => {
     const normalizedSteps = statusSteps.map(s => s.toLowerCase())
     const index = normalizedSteps.indexOf(normalizedStatus)
     return index !== -1 ? index : 0
+  }
+
+  // Show live tracking overlay when status is out_for_delivery
+  if (showLiveTracking && parcelData?.parcel_status?.toLowerCase() === 'out_for_delivery') {
+    return (
+      <LiveTracking 
+        trackingCode={parcelData.tracking_code} 
+        onClose={() => setShowLiveTracking(false)} 
+      />
+    )
   }
 
   return (
@@ -90,8 +130,8 @@ const TrackParcel = () => {
                       <Typography variant="body1">{parcelData.pickup_location || 'N/A'}</Typography>
                     </Box>
                     <Box>
-                      <Typography variant="body2" color="text.secondary">Dropoff Location</Typography>
-                      <Typography variant="body1">{parcelData.dropoff_location || 'N/A'}</Typography>
+                      <Typography variant="body2" color="text.secondary">Delivery Address</Typography>
+                      <Typography variant="body1">{parcelData.client_address || 'N/A'}</Typography>
                     </Box>
                   </Box>
                 </CardContent>
@@ -112,6 +152,29 @@ const TrackParcel = () => {
                 <Alert severity="success" icon={<CheckCircle />} sx={{ mt: 3 }}>
                   Your parcel has been delivered successfully!
                 </Alert>
+              )}
+
+              {parcelData.parcel_status?.toLowerCase() === 'out_for_delivery' && (
+                <Box sx={{ mt: 3, textAlign: 'center' }}>
+                  <Button 
+                    variant="contained" 
+                    size="large"
+                    startIcon={<LocalShipping />}
+                    onClick={() => setShowLiveTracking(true)}
+                    sx={{ 
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      px: 4,
+                      py: 1.5,
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)',
+                      }
+                    }}
+                  >
+                    Track Live Location 🚀
+                  </Button>
+                </Box>
               )}
             </Box>
           )}

@@ -1,13 +1,37 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './RiderDashboard.css'
+import RiderLiveTracking from './RiderLiveTracking'
 
 const RiderDashboard = () => {
+  const navigate = useNavigate()
   const [riderId, setRiderId] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [riderData, setRiderData] = useState(null)
   const [parcels, setParcels] = useState([])
   const [filter, setFilter] = useState('all')
   const [selectedParcel, setSelectedParcel] = useState(null)
+  const [trackingParcel, setTrackingParcel] = useState(null)
+
+  // Handle browser back button
+  useEffect(() => {
+    const handlePopState = () => {
+      if (trackingParcel) {
+        setTrackingParcel(null)
+        window.history.pushState(null, '', window.location.pathname)
+      }
+    }
+
+    if (trackingParcel) {
+      window.history.pushState(null, '', window.location.pathname)
+    }
+
+    window.addEventListener('popstate', handlePopState)
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [trackingParcel])
 
   const handleLogin = async () => {
     if (!riderId.trim()) return
@@ -184,7 +208,7 @@ const RiderDashboard = () => {
           </div>
         ) : (
           getFilteredParcels().map(parcel => (
-            <div key={parcel.id} className="parcel-card" onClick={() => setSelectedParcel(parcel)}>
+            <div key={parcel.id} className="parcel-card">
               <div className="parcel-header">
                 <div className="tracking-code">
                   <span className="label">Tracking</span>
@@ -215,8 +239,7 @@ const RiderDashboard = () => {
                     <span className="location-icon">🎯</span>
                     <div>
                       <p className="location-label">Dropoff</p>
-                      <p className="location-text">{parcel.dropoff_city}</p>
-                      <p className="location-detail">{parcel.dropoff_location}</p>
+                      <p className="location-text">{parcel.client_address || parcel.dropoff_location}</p>
                     </div>
                   </div>
                 </div>
@@ -225,8 +248,15 @@ const RiderDashboard = () => {
                   <div className="payment-info">
                     <span>💰 Rider Payout: <strong>Rs. {parcel.rider_payout || 0}</strong></span>
                   </div>
-                  <div className="payment-method">
-                    {parcel.payment_method || 'COD'}
+                  <div className="parcel-actions">
+                    <button className="view-details-btn" onClick={() => setSelectedParcel(parcel)}>
+                      View Details
+                    </button>
+                    {(parcel.parcel_status === 'in_transit' || parcel.parcel_status === 'out_for_delivery') && (
+                      <button className="start-tracking-btn" onClick={() => setTrackingParcel(parcel)}>
+                        📍 Start Tracking
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -234,6 +264,13 @@ const RiderDashboard = () => {
           ))
         )}
       </div>
+
+      {trackingParcel && (
+        <RiderLiveTracking 
+          parcel={trackingParcel} 
+          onClose={() => setTrackingParcel(null)} 
+        />
+      )}
 
       {selectedParcel && (
         <div className="modal-overlay" onClick={() => setSelectedParcel(null)}>
@@ -289,6 +326,19 @@ const RiderDashboard = () => {
                 <span className="detail-label">Company Payout:</span>
                 <span className="detail-value">Rs. {selectedParcel.company_payout || 0}</span>
               </div>
+            </div>
+            <div className="modal-footer">
+              {(selectedParcel.parcel_status === 'in_transit' || selectedParcel.parcel_status === 'out_for_delivery') && (
+                <button 
+                  className="modal-tracking-btn" 
+                  onClick={() => {
+                    setTrackingParcel(selectedParcel)
+                    setSelectedParcel(null)
+                  }}
+                >
+                  📍 Start Live Tracking
+                </button>
+              )}
             </div>
           </div>
         </div>
