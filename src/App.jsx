@@ -3,11 +3,15 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate 
 import './App.css'
 import Dashboard from './components/Dashboard/Dashboard'
 import Products from './components/Products/Products'
-import Riders from './components/Riders/Riders'
+import RidersMain from './components/Riders/RidersMain'
 import Merchants from './components/Merchants/Merchants'
 import Settings from './components/Settings/Settings'
 import TrackParcel from './components/TrackParcel/TrackParcel'
 import RiderDashboard from './components/RiderDashboard/RiderDashboard'
+import RiderRegistrationPage from './components/RiderRegistrationPage/RiderRegistrationPage'
+import RiderLogin from './components/RiderAuth/RiderLogin'
+import RiderDashboardAuth from './components/RiderAuth/RiderDashboard'
+import RiderStatusCheck from './components/RiderAuth/RiderStatusCheck'
 
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -71,9 +75,10 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/products" element={<Products />} />
-            <Route path="/riders" element={<Riders />} />
+            <Route path="/riders" element={<RidersMain />} />
             <Route path="/merchants" element={<Merchants />} />
             <Route path="/rider-dashboard" element={<RiderDashboard />} />
+            <Route path="/rider-registration" element={<RiderRegistrationPage />} />
             <Route path="/track" element={<TrackParcel />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
@@ -86,7 +91,16 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AppContent />
+      <Routes>
+        {/* Rider Auth Routes - Without Layout */}
+        <Route path="/rider/register" element={<RiderRegistrationPage />} />
+        <Route path="/rider/login" element={<RiderLogin />} />
+        <Route path="/rider/status" element={<RiderStatusCheck />} />
+        <Route path="/rider/dashboard" element={<RiderDashboardAuth />} />
+        
+        {/* Admin Routes - With Layout */}
+        <Route path="/*" element={<AppContent />} />
+      </Routes>
     </Router>
   )
 }

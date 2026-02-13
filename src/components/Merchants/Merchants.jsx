@@ -27,11 +27,14 @@ const Merchants = memo(function Merchants() {
     const fetchMerchants = async () => {
       try {
         const response = await axios.get("http://127.0.0.1:8000/api/merchants", {
-          timeout: 1500
+          timeout: 5000
         })
         setMerchants(response.data.data)
       } catch (error) {
         console.error('API Error:', error)
+        if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+          alert('Backend server is not running. Please start your Laravel server.')
+        }
       } finally {
         setLoading(false)
       }
@@ -41,12 +44,43 @@ const Merchants = memo(function Merchants() {
   }, [])
 
   const handleFieldChange = (field) => (e) => {
-    formDataRef.current[field] = e.target.value
+    const value = e.target.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
+    formDataRef.current[field] = value
   }
 
   const handleSubmit = async () => {
+    // Validate required fields
+    const requiredFields = {
+      first_name: 'First Name',
+      last_name: 'Last Name', 
+      email: 'Email',
+      company_name: 'Company Name',
+      per_parcel_rate: 'Per Parcel Rate',
+      city: 'City',
+      address: 'Address',
+      country: 'Country',
+      state: 'State',
+      zipcode: 'Zipcode'
+    }
+    
+    const missingFields = []
+    Object.keys(requiredFields).forEach(field => {
+      if (!formDataRef.current[field] || formDataRef.current[field].toString().trim() === '') {
+        missingFields.push(requiredFields[field])
+      }
+    })
+    
+    if (missingFields.length > 0) {
+      alert(`Please fill in the following required fields: ${missingFields.join(', ')}`)
+      return
+    }
+    
     try {
-      await axios.post('http://127.0.0.1:8000/api/merchants', formDataRef.current)
+      console.log('Sending merchant data:', formDataRef.current)
+      
+      const response = await axios.post('http://127.0.0.1:8000/api/merchants', formDataRef.current)
+      console.log('Success response:', response.data)
+      
       setOpen(false)
       formDataRef.current = {
         first_name: '',
@@ -61,18 +95,22 @@ const Merchants = memo(function Merchants() {
         state: '',
         zipcode: ''
       }
-      // Refresh merchants list
-      const response = await axios.get("http://127.0.0.1:8000/api/merchants")
-      setMerchants(response.data.data)
+      const refreshResponse = await axios.get("http://127.0.0.1:8000/api/merchants")
+      setMerchants(refreshResponse.data.data)
       alert('Merchant added successfully!')
     } catch (error) {
       console.error('Error adding merchant:', error)
+      console.error('Error response:', error.response?.data)
       
-      const errorMessages = error.response?.data?.errors 
-        ? Object.values(error.response.data.errors).flat().join(', ')
-        : 'Please check console for details'
-      
-      alert(`Validation Error: ${errorMessages}`)
+      if (error.response?.status === 500) {
+        alert('Server Error: Please check if the backend server is running and database is connected.')
+      } else {
+        const errorMessages = error.response?.data?.errors 
+          ? Object.values(error.response.data.errors).flat().join(', ')
+          : error.response?.data?.message || 'Please check console for details'
+        
+        alert(`Error: ${errorMessages}`)
+      }
     }
   }
 
