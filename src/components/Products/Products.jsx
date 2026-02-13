@@ -30,8 +30,6 @@ const Products = () => {
     client_email: '',
     pickup_location: '',
     pickup_city: '',
-    dropoff_location: '',
-    dropoff_city: '',
     assigned_to: '',
     parcel_status: 'pending',
     payment_method: '',
@@ -56,20 +54,11 @@ const Products = () => {
 
   const fetchRiders = useCallback(async () => {
     try {
-      const [ridersRes, parcelsRes] = await Promise.all([
-        axios.get("http://127.0.0.1:8000/api/riders", { timeout: 10000 }),
-        axios.get("http://127.0.0.1:8000/api/parcels", { timeout: 10000 })
-      ])
+      const ridersRes = await axios.get("http://127.0.0.1:8000/api/riders", { timeout: 10000 })
       const ridersData = Array.isArray(ridersRes.data) ? ridersRes.data : (ridersRes.data?.data || [])
-      const parcelsData = parcelsRes.data?.data || []
       
-      const ridersWithCount = ridersData.map(rider => {
-        const parcelCount = parcelsData.filter(p => p.assigned_to === rider.id).length
-        return { ...rider, parcel_count: parcelCount }
-      })
-      
-      const filteredRiders = ridersWithCount.filter(rider => rider.parcel_count < 5)
-      setRiders(filteredRiders)
+      // Use backend count directly - no manual filtering
+      setRiders(ridersData)
       
       // Store riders in localStorage for Rider Dashboard
       localStorage.setItem('riders', JSON.stringify(ridersData))
@@ -225,8 +214,8 @@ const Products = () => {
       alert('Pickup location is required')
       return
     }
-    if (!formData.dropoff_location.trim()) {
-      alert('Dropoff location is required')
+    if (!formData.client_address.trim()) {
+      alert('Client address is required')
       return
     }
     try {
@@ -263,8 +252,6 @@ const Products = () => {
         client_email: '',
         pickup_location: '',
         pickup_city: '',
-        dropoff_location: '',
-        dropoff_city: '',
         assigned_to: '',
         parcel_status: 'pending',
         payment_method: '',
@@ -295,8 +282,6 @@ const Products = () => {
       client_email: parcel.details?.client_email || '',
       pickup_location: parcel.pickup_location || '',
       pickup_city: parcel.pickup_city || '',
-      dropoff_location: parcel.dropoff_location || '',
-      dropoff_city: parcel.dropoff_city || '',
       assigned_to: parcel.assigned_to ?? '',
       parcel_status: parcel.parcel_status || 'pending',
       payment_method: parcel.payment_method || '',
@@ -428,7 +413,6 @@ const Products = () => {
               <TableCell style={{color: 'white'}}>Address</TableCell>
               <TableCell style={{color: 'white'}}>Email</TableCell>
               <TableCell style={{color: 'white'}}>Pickup</TableCell>
-              <TableCell style={{color: 'white'}}>Dropoff</TableCell>
               <TableCell style={{color: 'white'}}>Assigned To</TableCell>
               <TableCell style={{color: 'white'}}>Status</TableCell>
               <TableCell style={{color: 'white'}}>Payment</TableCell>
@@ -455,10 +439,6 @@ const Products = () => {
                 <TableCell>
                   {item.pickup_location || 'N/A'}
                   {item.pickup_city && <>, {item.pickup_city}</>}
-                </TableCell>
-                <TableCell>
-                  {item.dropoff_location || 'N/A'}
-                  {item.dropoff_city && <>, {item.dropoff_city}</>}
                 </TableCell>
                 <TableCell>{item.assigned_to || 'N/A'}</TableCell>
                 <TableCell>
@@ -504,7 +484,7 @@ const Products = () => {
             ))}
             {(!Array.isArray(memoizedParcels) || memoizedParcels.length === 0) && (
               <TableRow>
-                <TableCell colSpan={14} style={{textAlign: 'center'}}>
+                <TableCell colSpan={13} style={{textAlign: 'center'}}>
                   No data available
                 </TableCell>
               </TableRow>
@@ -534,13 +514,6 @@ const Products = () => {
             <FormControl fullWidth>
               <InputLabel>Pickup City *</InputLabel>
               <Select name="pickup_city" value={formData.pickup_city} onChange={handleChange} label="Pickup City *" required>
-                {cities.map(city => <MenuItem key={city} value={city}>{city}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <TextField name="dropoff_location" label="Dropoff Location *" value={formData.dropoff_location} onChange={handleChange} fullWidth required />
-            <FormControl fullWidth>
-              <InputLabel>Dropoff City *</InputLabel>
-              <Select name="dropoff_city" value={formData.dropoff_city} onChange={handleChange} label="Dropoff City *" required>
                 {cities.map(city => <MenuItem key={city} value={city}>{city}</MenuItem>)}
               </Select>
             </FormControl>
@@ -666,13 +639,6 @@ const Products = () => {
             <FormControl fullWidth>
               <InputLabel>Pickup City</InputLabel>
               <Select name="pickup_city" value={formData.pickup_city} onChange={handleChange} label="Pickup City">
-                {cities.map(city => <MenuItem key={city} value={city}>{city}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <TextField name="dropoff_location" label="Dropoff Location" value={formData.dropoff_location} onChange={handleChange} fullWidth />
-            <FormControl fullWidth>
-              <InputLabel>Dropoff City</InputLabel>
-              <Select name="dropoff_city" value={formData.dropoff_city} onChange={handleChange} label="Dropoff City">
                 {cities.map(city => <MenuItem key={city} value={city}>{city}</MenuItem>)}
               </Select>
             </FormControl>
