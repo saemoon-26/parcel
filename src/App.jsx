@@ -12,6 +12,10 @@ import RiderRegistrationPage from './components/RiderRegistrationPage/RiderRegis
 import RiderLogin from './components/RiderAuth/RiderLogin'
 import RiderDashboardAuth from './components/RiderAuth/RiderDashboard'
 import RiderStatusCheck from './components/RiderAuth/RiderStatusCheck'
+import MerchantRegistrationPage from './components/MerchantRegistrationPage/MerchantRegistrationPage'
+import MerchantLogin from './components/MerchantAuth/MerchantLogin'
+import MerchantDashboard from './components/MerchantAuth/MerchantDashboard'
+import WelcomePage from './components/WelcomePage/WelcomePage'
 
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -92,11 +96,19 @@ function App() {
   return (
     <Router>
       <Routes>
+        {/* Welcome Page */}
+        <Route path="/welcome" element={<WelcomePage />} />
+        
         {/* Rider Auth Routes - Without Layout */}
         <Route path="/rider/register" element={<RiderRegistrationPage />} />
         <Route path="/rider/login" element={<RiderLogin />} />
         <Route path="/rider/status" element={<RiderStatusCheck />} />
         <Route path="/rider/dashboard" element={<RiderDashboardAuth />} />
+        
+        {/* Merchant Auth Routes - Without Layout */}
+        <Route path="/merchant/register" element={<MerchantRegistrationPage />} />
+        <Route path="/merchant/login" element={<MerchantLogin />} />
+        <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
         
         {/* Admin Routes - With Layout */}
         <Route path="/*" element={<AppContent />} />

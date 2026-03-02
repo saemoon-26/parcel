@@ -7,8 +7,11 @@ import axios from 'axios'
 const Products = () => {
   const [parcels, setParcels] = useState([])
   const [riders, setRiders] = useState([])
+  const [merchants, setMerchants] = useState([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
+  const [parcelFormOpen, setParcelFormOpen] = useState(false)
+  const [selectedMerchant, setSelectedMerchant] = useState(null)
   const [newParcelId, setNewParcelId] = useState(null)
   const tableEndRef = useRef(null)
   const [editOpen, setEditOpen] = useState(false)
@@ -56,11 +59,7 @@ const Products = () => {
     try {
       const ridersRes = await axios.get("http://127.0.0.1:8000/api/riders", { timeout: 10000 })
       const ridersData = Array.isArray(ridersRes.data) ? ridersRes.data : (ridersRes.data?.data || [])
-      
-      // Use backend count directly - no manual filtering
       setRiders(ridersData)
-      
-      // Store riders in localStorage for Rider Dashboard
       localStorage.setItem('riders', JSON.stringify(ridersData))
     } catch (error) {
       console.error('Error fetching riders:', error.message)
@@ -68,10 +67,21 @@ const Products = () => {
     }
   }, [])
 
+  const fetchMerchants = useCallback(async () => {
+    try {
+      const response = await axios.get("http://127.0.0.1:8000/api/merchants", { timeout: 10000 })
+      setMerchants(response.data?.data || [])
+    } catch (error) {
+      console.error('Error fetching merchants:', error.message)
+      setMerchants([])
+    }
+  }, [])
+
   useEffect(() => {
     fetchParcels()
     fetchRiders()
-  }, [fetchParcels, fetchRiders])
+    fetchMerchants()
+  }, [fetchParcels, fetchRiders, fetchMerchants])
 
   useEffect(() => {
     if (open) {
@@ -226,7 +236,6 @@ const Products = () => {
       const response = await axios.post('http://127.0.0.1:8000/api/parcels', dataToSend, { timeout: 10000 })
       const parcelId = response.data?.data?.parcel_id
       
-      // Auto-assign rider using AI (if coordinates provided)
       if (parcelId && formData.pickup_lat && formData.pickup_lng) {
         try {
           const assignResponse = await axios.post('http://127.0.0.1:8000/api/assign-rider', {
@@ -243,7 +252,8 @@ const Products = () => {
       }
       
       setNewParcelId(parcelId)
-      setOpen(false)
+      
+      // Reset form but keep dialog open
       setFormData({
         tracking_code: '',
         client_name: '',
@@ -258,12 +268,19 @@ const Products = () => {
         rider_payout: '',
         company_payout: ''
       })
+      
+      // Generate new tracking code
+      axios.get('http://127.0.0.1:8000/api/generate-tracking-code')
+        .then(response => {
+          setFormData(prev => ({
+            ...prev,
+            tracking_code: response.data.tracking_code
+          }))
+        })
+      
       await fetchParcels()
-      setTimeout(() => {
-        tableEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-        setTimeout(() => setNewParcelId(null), 3000)
-      }, 100)
-      alert('Parcel added successfully!')
+      alert('✅ Parcel added successfully!')
+      
     } catch (error) {
       const errorMessages = error.response?.data?.errors 
         ? Object.values(error.response.data.errors).flat().join(', ')
@@ -289,6 +306,12 @@ const Products = () => {
       company_payout: parcel.company_payout || ''
     })
     setEditOpen(true)
+  }, [])
+
+  const handleMerchantSelect = useCallback((merchant) => {
+    setSelectedMerchant(merchant)
+    setOpen(false)
+    setParcelFormOpen(true)
   }, [])
 
   const handleEditSubmit = useCallback(async () => {
@@ -497,10 +520,55 @@ const Products = () => {
       <Dialog open={open} onClose={handleCloseDialog} maxWidth="md" fullWidth>
         <DialogTitle>
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            Add New Parcel
-            <Button startIcon={<QrCodeScanner />} onClick={() => setScannerOpen(true)} variant="outlined" size="small">
-              Scan QR
-            </Button>
+            Select Merchant
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
+                  <TableCell style={{color: 'white'}}>ID</TableCell>
+                  <TableCell style={{color: 'white'}}>Owner Name</TableCell>
+                  <TableCell style={{color: 'white'}}>Business Name</TableCell>
+                  <TableCell style={{color: 'white'}}>Action</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {merchants.map((merchant) => (
+                  <TableRow key={merchant.id}>
+                    <TableCell>{merchant.id}</TableCell>
+                    <TableCell>{merchant.first_name} {merchant.last_name}</TableCell>
+                    <TableCell>{merchant.company?.company_name || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Button variant="contained" size="small" onClick={() => handleMerchantSelect(merchant)}>Select</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={parcelFormOpen} onClose={() => setParcelFormOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Box>
+              <Typography variant="h6">Add New Parcel</Typography>
+              <Typography variant="caption" color="primary">Merchant: {selectedMerchant?.company_name || selectedMerchant?.business_name}</Typography>
+            </Box>
+            <Box display="flex" gap={1}>
+              <Button startIcon={<QrCodeScanner />} onClick={() => setScannerOpen(true)} variant="outlined" size="small">
+                Scan QR
+              </Button>
+              <Button onClick={() => { setParcelFormOpen(false); setSelectedMerchant(null); setOpen(true); }} variant="outlined" size="small">
+                ← Back
+              </Button>
+            </Box>
           </Box>
         </DialogTitle>
         <DialogContent>
@@ -533,8 +601,8 @@ const Products = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">Add</Button>
+          <Button onClick={() => { setParcelFormOpen(false); setSelectedMerchant(null); }}>Close</Button>
+          <Button onClick={handleSubmit} variant="contained">Add Parcel</Button>
         </DialogActions>
       </Dialog>
 

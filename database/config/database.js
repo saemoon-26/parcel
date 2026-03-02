@@ -3,7 +3,7 @@ const mysql = require('mysql2/promise');
 const dbConfig = {
   host: 'localhost',
   user: 'root',
-  password: '', // Add your MySQL password
+  password: 'Noor.1234',
   database: 'parcel_delivery',
   port: 3306,
   charset: 'utf8mb4'

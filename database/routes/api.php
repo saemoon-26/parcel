@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\RiderRegistrationController;
+use App\Http\Controllers\Api\MerchantRegistrationController;
 use App\Http\Controllers\Api\AuthController;
 
 /*
@@ -19,6 +20,7 @@ Route::prefix('api')->group(function () {
     
     // Public routes (no authentication required)
     Route::post('/rider-registrations', [RiderRegistrationController::class, 'store']);
+    Route::post('/merchant-registrations', [MerchantRegistrationController::class, 'store']);
     
     // Protected routes (require authentication)
     Route::middleware('auth:sanctum')->group(function () {
@@ -40,6 +42,12 @@ Route::prefix('api')->group(function () {
         
         // Get documents
         Route::get('/rider-registrations/{id}/documents', [RiderRegistrationController::class, 'getDocuments']);
+        
+        // Merchant Registration Routes
+        Route::get('/merchant-registrations', [MerchantRegistrationController::class, 'index']);
+        Route::get('/merchant-registrations/{id}', [MerchantRegistrationController::class, 'show']);
+        Route::post('/merchant-registrations/{id}/approve', [MerchantRegistrationController::class, 'approve']);
+        Route::post('/merchant-registrations/{id}/reject', [MerchantRegistrationController::class, 'reject']);
         
     });
 });
