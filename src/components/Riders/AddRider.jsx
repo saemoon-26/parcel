@@ -18,15 +18,20 @@ import axios from 'axios'
 
 const VEHICLE_TYPES = ['Bike', 'Car', 'Van']
 const CITIES = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala']
+const STATES = ['Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan', 'Gilgit-Baltistan', 'Azad Kashmir', 'Islamabad Capital Territory']
 
 const AddRider = () => {
   const [formData, setFormData] = useState({
     name: '',
+    fatherName: '',
     email: '',
     phone: '',
+    cnic: '',
+    license: '',
+    address: '',
     city: '',
-    vehicleType: '',
-    status: 'Active'
+    state: '',
+    vehicleType: ''
   })
   const [loading, setLoading] = useState(false)
 
@@ -37,7 +42,9 @@ const AddRider = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!formData.name || !formData.email || !formData.phone || !formData.city) {
+    console.log('Form Data State:', formData)
+    
+    if (!formData.name || !formData.email || !formData.phone || !formData.city || !formData.cnic || !formData.license || !formData.address || !formData.state) {
       alert('Please fill all required fields')
       return
     }
@@ -46,28 +53,41 @@ const AddRider = () => {
     try {
       const riderData = {
         full_name: formData.name,
+        father_name: formData.fatherName || 'N/A',
         email: formData.email,
+        password: 'rider123',
         mobile_primary: formData.phone,
-        city: formData.city,
+        cnic_number: formData.cnic,
+        driving_license_number: formData.license,
         vehicle_type: formData.vehicleType || 'Bike',
-        status: formData.status
+        city: formData.city,
+        state: formData.state,
+        address: formData.address
       }
       
-      await axios.post('http://127.0.0.1:8000/api/riders', riderData)
+      console.log('Sending data:', riderData)
+      const response = await axios.post('http://127.0.0.1:8000/api/rider-registrations', riderData)
+      console.log('Response:', response.data)
       alert('Rider added successfully!')
       
-      // Reset form
       setFormData({
         name: '',
+        fatherName: '',
         email: '',
         phone: '',
+        cnic: '',
+        license: '',
+        address: '',
         city: '',
-        vehicleType: '',
-        status: 'Active'
+        state: '',
+        vehicleType: ''
       })
     } catch (error) {
-      console.error('Error adding rider:', error)
-      alert(`Error adding rider: ${error.response?.data?.message || error.message}`)
+      console.error('Error adding rider:', error.response?.data)
+      const errorMsg = error.response?.data?.errors 
+        ? Object.values(error.response.data.errors).flat().join(', ')
+        : error.response?.data?.message || error.message
+      alert(`Error: ${errorMsg}`)
     } finally {
       setLoading(false)
     }
@@ -98,6 +118,15 @@ const AddRider = () => {
               
               <Grid item xs={12} md={6}>
                 <TextField
+                  label="Father Name"
+                  value={formData.fatherName}
+                  onChange={handleChange('fatherName')}
+                  fullWidth
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
                   label="Email *"
                   type="email"
                   value={formData.email}
@@ -118,11 +147,44 @@ const AddRider = () => {
               </Grid>
               
               <Grid item xs={12} md={6}>
+                <TextField
+                  label="CNIC Number *"
+                  value={formData.cnic}
+                  onChange={handleChange('cnic')}
+                  placeholder="12345-1234567-1"
+                  fullWidth
+                  required
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="Driving License *"
+                  value={formData.license}
+                  onChange={handleChange('license')}
+                  fullWidth
+                  required
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <TextField
+                  label="Address *"
+                  value={formData.address}
+                  onChange={handleChange('address')}
+                  fullWidth
+                  required
+                  multiline
+                  rows={2}
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
                 <FormControl fullWidth required>
                   <InputLabel>City *</InputLabel>
                   <Select
                     value={formData.city}
-                    onChange={handleChange('city')}
+                    onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
                     label="City *"
                   >
                     {CITIES.map(city => (
@@ -133,15 +195,15 @@ const AddRider = () => {
               </Grid>
               
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Vehicle Type</InputLabel>
+                <FormControl fullWidth required>
+                  <InputLabel>State *</InputLabel>
                   <Select
-                    value={formData.vehicleType}
-                    onChange={handleChange('vehicleType')}
-                    label="Vehicle Type"
+                    value={formData.state}
+                    onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
+                    label="State *"
                   >
-                    {VEHICLE_TYPES.map(type => (
-                      <MenuItem key={type} value={type}>{type}</MenuItem>
+                    {STATES.map(state => (
+                      <MenuItem key={state} value={state}>{state}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
@@ -149,14 +211,15 @@ const AddRider = () => {
               
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
-                  <InputLabel>Status</InputLabel>
+                  <InputLabel>Vehicle Type</InputLabel>
                   <Select
-                    value={formData.status}
-                    onChange={handleChange('status')}
-                    label="Status"
+                    value={formData.vehicleType}
+                    onChange={(e) => setFormData(prev => ({ ...prev, vehicleType: e.target.value }))}
+                    label="Vehicle Type"
                   >
-                    <MenuItem value="Active">Active</MenuItem>
-                    <MenuItem value="Inactive">Inactive</MenuItem>
+                    {VEHICLE_TYPES.map(type => (
+                      <MenuItem key={type} value={type}>{type}</MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>
@@ -168,11 +231,15 @@ const AddRider = () => {
                     variant="outlined"
                     onClick={() => setFormData({
                       name: '',
+                      fatherName: '',
                       email: '',
                       phone: '',
+                      cnic: '',
+                      license: '',
+                      address: '',
                       city: '',
-                      vehicleType: '',
-                      status: 'Active'
+                      state: '',
+                      vehicleType: ''
                     })}
                   >
                     Reset

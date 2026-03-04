@@ -10,7 +10,6 @@ import TrackParcel from './components/TrackParcel/TrackParcel'
 import RiderDashboard from './components/RiderDashboard/RiderDashboard'
 import RiderRegistrationPage from './components/RiderRegistrationPage/RiderRegistrationPage'
 import RiderLogin from './components/RiderAuth/RiderLogin'
-import RiderDashboardAuth from './components/RiderAuth/RiderDashboard'
 import RiderStatusCheck from './components/RiderAuth/RiderStatusCheck'
 
 function AppContent() {
@@ -96,7 +95,6 @@ function App() {
         <Route path="/rider/register" element={<RiderRegistrationPage />} />
         <Route path="/rider/login" element={<RiderLogin />} />
         <Route path="/rider/status" element={<RiderStatusCheck />} />
-        <Route path="/rider/dashboard" element={<RiderDashboardAuth />} />
         
         {/* Admin Routes - With Layout */}
         <Route path="/*" element={<AppContent />} />
