@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, memo, useRef, useCallback } from 'react'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Box, IconButton, Tooltip } from '@mui/material'
-import { Edit, Delete } from '@mui/icons-material'
+import { Edit, Delete, Visibility, CheckCircle, Cancel } from '@mui/icons-material'
 import axios from 'axios'
 
 const Merchants = memo(function Merchants() {
@@ -8,6 +8,8 @@ const Merchants = memo(function Merchants() {
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [viewOpen, setViewOpen] = useState(false)
+  const [selectedMerchant, setSelectedMerchant] = useState(null)
   const [editingMerchant, setEditingMerchant] = useState(null)
   const formDataRef = useRef({
     first_name: '',
@@ -132,6 +134,39 @@ const Merchants = memo(function Merchants() {
     setEditOpen(true)
   }, [])
 
+  const handleView = useCallback((merchant) => {
+    setSelectedMerchant(merchant)
+    setViewOpen(true)
+  }, [])
+
+  const handleApprove = useCallback(async (id) => {
+    if (confirm('Are you sure you want to approve this merchant?')) {
+      try {
+        await axios.post(`http://127.0.0.1:8000/api/merchants/${id}/approve`)
+        const response = await axios.get("http://127.0.0.1:8000/api/merchants")
+        setMerchants(response.data.data)
+        alert('Merchant approved successfully!')
+      } catch (error) {
+        console.error('Error approving merchant:', error)
+        alert('Error approving merchant')
+      }
+    }
+  }, [])
+
+  const handleReject = useCallback(async (id) => {
+    if (confirm('Are you sure you want to reject this merchant?')) {
+      try {
+        await axios.post(`http://127.0.0.1:8000/api/merchants/${id}/reject`)
+        const response = await axios.get("http://127.0.0.1:8000/api/merchants")
+        setMerchants(response.data.data)
+        alert('Merchant rejected successfully!')
+      } catch (error) {
+        console.error('Error rejecting merchant:', error)
+        alert('Error rejecting merchant')
+      }
+    }
+  }, [])
+
   const handleDelete = useCallback(async (id) => {
     if (confirm('Are you sure you want to delete this merchant?')) {
       try {
@@ -187,43 +222,62 @@ const Merchants = memo(function Merchants() {
           <TableHead>
             <TableRow style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white'}}>
               <TableCell style={{color: 'white'}}>ID</TableCell>
-              <TableCell style={{color: 'white'}}>First Name</TableCell>
-              <TableCell style={{color: 'white'}}>Last Name</TableCell>
+              <TableCell style={{color: 'white'}}>Business Name</TableCell>
+              <TableCell style={{color: 'white'}}>Owner Name</TableCell>
               <TableCell style={{color: 'white'}}>Email</TableCell>
-              <TableCell style={{color: 'white'}}>Company Name</TableCell>
-              <TableCell style={{color: 'white'}}>Per Parcel Payout</TableCell>
-              <TableCell style={{color: 'white'}}>Per Parcel Rate</TableCell>
+              <TableCell style={{color: 'white'}}>Phone</TableCell>
               <TableCell style={{color: 'white'}}>City</TableCell>
-              <TableCell style={{color: 'white'}}>Address</TableCell>
-              <TableCell style={{color: 'white'}}>State</TableCell>
-              <TableCell style={{color: 'white'}}>Country</TableCell>
-              <TableCell style={{color: 'white'}}>Zipcode</TableCell>
-              <TableCell style={{color: 'white'}}>Controls</TableCell>
+              <TableCell style={{color: 'white'}}>Product Type</TableCell>
+              <TableCell style={{color: 'white'}}>Status</TableCell>
+              <TableCell style={{color: 'white'}}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {merchants.length > 0 ? merchants.map((merchant) => (
               <TableRow key={merchant.id}>
                 <TableCell>{merchant.id}</TableCell>
-                <TableCell>{merchant.first_name}</TableCell>
-                <TableCell>{merchant.last_name}</TableCell>
-                <TableCell>{merchant.email}</TableCell>
-                <TableCell>{merchant.company_name || merchant.company?.company_name || 'N/A'}</TableCell>
-                <TableCell>Rs. {merchant.per_parcel_payout}</TableCell>
-                <TableCell>Rs. {merchant.per_parcel_rate || merchant.company?.per_parcel_rate || '0.00'}</TableCell>
+                <TableCell>{merchant.company?.company_name || 'N/A'}</TableCell>
+                <TableCell>{merchant.first_name} {merchant.last_name}</TableCell>
+                <TableCell>{merchant.email || 'N/A'}</TableCell>
+                <TableCell>{merchant.phone || 'N/A'}</TableCell>
                 <TableCell>{merchant.address?.city || 'N/A'}</TableCell>
-                <TableCell>{merchant.address?.address || 'N/A'}</TableCell>
-                <TableCell>{merchant.address?.state || 'N/A'}</TableCell>
-                <TableCell>{merchant.address?.country || 'N/A'}</TableCell>
-                <TableCell>{merchant.address?.zipcode || 'N/A'}</TableCell>
+                <TableCell>{merchant.company?.product_type || 'N/A'}</TableCell>
                 <TableCell>
-                  <Box display="flex" gap={1}>
-                    <Tooltip title="Edit Merchant">
-                      <IconButton size="small" color="primary" onClick={() => handleEdit(merchant)}>
-                        <Edit />
+                  <span style={{
+                    padding: '4px 12px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    backgroundColor: merchant.approval_status === 'approved' ? '#4caf50' : merchant.approval_status === 'rejected' ? '#f44336' : '#ff9800',
+                    color: 'white'
+                  }}>
+                    {merchant.approval_status || 'pending'}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <Box display="flex" gap={1} sx={{ minWidth: '180px' }}>
+                    <Tooltip title="View Details">
+                      <IconButton size="small" color="info" onClick={() => handleView(merchant)}>
+                        <Visibility />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Delete Merchant">
+                    {merchant.approval_status === 'pending' ? (
+                      <>
+                        <Tooltip title="Approve">
+                          <IconButton size="small" style={{color: '#4caf50'}} onClick={() => handleApprove(merchant.id)}>
+                            <CheckCircle />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Reject">
+                          <IconButton size="small" color="error" onClick={() => handleReject(merchant.id)}>
+                            <Cancel />
+                          </IconButton>
+                        </Tooltip>
+                      </>
+                    ) : (
+                      <Box sx={{ width: '80px' }} />
+                    )}
+                    <Tooltip title="Delete">
                       <IconButton size="small" color="error" onClick={() => handleDelete(merchant.id)}>
                         <Delete />
                       </IconButton>
@@ -233,7 +287,7 @@ const Merchants = memo(function Merchants() {
               </TableRow>
             )) : (
               <TableRow>
-                <TableCell colSpan={13} style={{textAlign: 'center'}}>
+                <TableCell colSpan={9} style={{textAlign: 'center'}}>
                   No merchants available
                 </TableCell>
               </TableRow>
@@ -436,6 +490,34 @@ const Merchants = memo(function Merchants() {
         <DialogActions>
           <Button onClick={() => setEditOpen(false)}>Cancel</Button>
           <Button onClick={handleEditSubmit} variant="contained">Update Merchant</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Merchant Details</DialogTitle>
+        <DialogContent>
+          {selectedMerchant && (
+            <Box sx={{ mt: 2, p: 2 }}>
+              <p><strong>Business Name:</strong> {selectedMerchant.company?.company_name || 'N/A'}</p>
+              <p><strong>Owner Name:</strong> {selectedMerchant.first_name} {selectedMerchant.last_name}</p>
+              <p><strong>Email:</strong> {selectedMerchant.email || 'N/A'}</p>
+              <p><strong>Phone:</strong> {selectedMerchant.phone || 'N/A'}</p>
+              <p><strong>Address:</strong> {selectedMerchant.company?.address || 'N/A'}</p>
+              <p><strong>City:</strong> {selectedMerchant.address?.city || 'N/A'}</p>
+              <p><strong>Product Type:</strong> {selectedMerchant.company?.product_type || 'N/A'}</p>
+              <p><strong>Avg Parcels/Day:</strong> {selectedMerchant.company?.avg_parcels_per_day || 'N/A'}</p>
+              <p><strong>Per Parcel Rate:</strong> {selectedMerchant.company?.per_parcel_rate || 'N/A'}</p>
+              <p><strong>Bank Name:</strong> {selectedMerchant.company?.bank_name || 'N/A'}</p>
+              <p><strong>Account Number:</strong> {selectedMerchant.company?.account_number || 'N/A'}</p>
+              {selectedMerchant.company?.business_document && (
+                <p><strong>Business Document:</strong> <a href={`http://127.0.0.1:8000/storage/${selectedMerchant.company.business_document}`} target="_blank" rel="noopener noreferrer">View Document</a></p>
+              )}
+              <p><strong>Status:</strong> {selectedMerchant.approval_status || 'pending'}</p>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </div>
