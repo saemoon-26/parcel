@@ -35,6 +35,7 @@ const RegisteredRiders = () => {
     try {
       const response = await axios.get('http://localhost:8000/api/rider-registrations')
       const data = response.data
+      console.log('Backend Response:', data)
       
       // Handle different response structures
       if (Array.isArray(data)) {
@@ -58,11 +59,14 @@ const RegisteredRiders = () => {
   const handleApprove = async (id) => {
     if (window.confirm('Are you sure you want to approve this rider?')) {
       try {
-        await axios.post(`http://localhost:8000/api/rider-registrations/${id}/approve`)
+        console.log('Approving rider ID:', id)
+        const response = await axios.post(`http://localhost:8000/api/rider-registrations/${id}/approve`)
+        console.log('Approve response:', response.data)
         alert('Rider approved successfully!')
         fetchRegistrations()
       } catch (error) {
         console.error('Error approving rider:', error)
+        console.error('Error response:', error.response?.data)
         alert(`Error: ${error.response?.data?.message || error.message}`)
       }
     }
@@ -85,6 +89,7 @@ const RegisteredRiders = () => {
   }
 
   const handleViewDetails = (rider) => {
+    console.log('Rider Details:', rider)
     setViewDialog({ open: true, rider })
   }
 
@@ -129,16 +134,16 @@ const RegisteredRiders = () => {
           <TableBody>
             {registrations.length > 0 ? registrations.map((rider) => (
               <TableRow key={rider.id} style={{ 
-                backgroundColor: rider.status === 'approved' ? '#e8f5e8' : 
+                backgroundColor: rider.status === 'active' ? '#e8f5e8' : 
                                 rider.status === 'rejected' ? '#ffeaea' : 'transparent'
               }}>
-                <TableCell>{rider.full_name || 'N/A'}</TableCell>
+                <TableCell>{rider.full_name || rider.first_name + ' ' + rider.last_name || 'N/A'}</TableCell>
                 <TableCell>{rider.email || 'N/A'}</TableCell>
-                <TableCell>{rider.mobile_primary || 'N/A'}</TableCell>
+                <TableCell>{rider.mobile_primary || rider.phone_number || 'N/A'}</TableCell>
                 <TableCell>{rider.city || 'N/A'}</TableCell>
-                <TableCell>{(rider.vehicle_type || 'N/A') + ' - ' + (rider.vehicle_brand || 'N/A')}</TableCell>
+                <TableCell>{rider.vehicle?.vehicle_type || rider.vehicle_type || 'N/A'} - {rider.vehicle?.vehicle_brand || rider.vehicle_brand || 'N/A'}</TableCell>
                 <TableCell>
-                  {rider.status === 'approved' ? (
+                  {rider.status === 'active' ? (
                     <Chip label="Approved" color="success" size="small" />
                   ) : rider.status === 'rejected' ? (
                     <Chip label="Rejected" color="error" size="small" />
@@ -191,39 +196,39 @@ const RegisteredRiders = () => {
               {/* Personal Information */}
               <div style={{ marginBottom: '16px' }}>
                 <Typography variant="h6" sx={{ mb: 2, color: '#1976d2' }}>Personal Information</Typography>
-                <Typography><strong>Full Name:</strong> {viewDialog.rider.full_name}</Typography>
-                <Typography><strong>Father Name:</strong> {viewDialog.rider.father_name}</Typography>
-                <Typography><strong>CNIC:</strong> {viewDialog.rider.cnic_number}</Typography>
-                <Typography><strong>Email:</strong> {viewDialog.rider.email}</Typography>
-                <Typography><strong>Primary Phone:</strong> {viewDialog.rider.mobile_primary}</Typography>
+                <Typography><strong>Full Name:</strong> {viewDialog.rider.full_name || (viewDialog.rider.first_name + ' ' + viewDialog.rider.last_name) || 'N/A'}</Typography>
+                <Typography><strong>Father Name:</strong> {viewDialog.rider.father_name || 'N/A'}</Typography>
+                <Typography><strong>CNIC:</strong> {viewDialog.rider.cnic_number || 'N/A'}</Typography>
+                <Typography><strong>Email:</strong> {viewDialog.rider.email || 'N/A'}</Typography>
+                <Typography><strong>Primary Phone:</strong> {viewDialog.rider.mobile_primary || viewDialog.rider.phone_number || 'N/A'}</Typography>
                 <Typography><strong>Alternate Phone:</strong> {viewDialog.rider.mobile_alternate || 'N/A'}</Typography>
-                <Typography><strong>Address:</strong> {viewDialog.rider.address}</Typography>
+                <Typography><strong>Address:</strong> {viewDialog.rider.address || 'N/A'}</Typography>
               </div>
               
               {/* Location */}
               <div style={{ marginBottom: '16px' }}>
                 <Typography variant="h6" sx={{ mb: 2, color: '#ff9800' }}>Location</Typography>
-                <Typography><strong>City:</strong> {viewDialog.rider.city}</Typography>
-                <Typography><strong>State:</strong> {viewDialog.rider.state}</Typography>
+                <Typography><strong>City:</strong> {viewDialog.rider.city || 'N/A'}</Typography>
+                <Typography><strong>State:</strong> {viewDialog.rider.state || 'N/A'}</Typography>
               </div>
               
               {/* Vehicle Information */}
               <div style={{ marginBottom: '16px' }}>
                 <Typography variant="h6" sx={{ mb: 2, color: '#4caf50' }}>Vehicle Information</Typography>
-                <Typography><strong>Type:</strong> {viewDialog.rider.vehicle_type}</Typography>
-                <Typography><strong>Brand:</strong> {viewDialog.rider.vehicle_brand}</Typography>
-                <Typography><strong>Model:</strong> {viewDialog.rider.vehicle_model}</Typography>
-                <Typography><strong>Registration:</strong> {viewDialog.rider.vehicle_registration}</Typography>
-                <Typography><strong>License Number:</strong> {viewDialog.rider.driving_license_number}</Typography>
+                <Typography><strong>Type:</strong> {viewDialog.rider.vehicle?.vehicle_type || viewDialog.rider.vehicle_type || 'N/A'}</Typography>
+                <Typography><strong>Brand:</strong> {viewDialog.rider.vehicle?.vehicle_brand || viewDialog.rider.vehicle_brand || 'N/A'}</Typography>
+                <Typography><strong>Model:</strong> {viewDialog.rider.vehicle?.vehicle_model || viewDialog.rider.vehicle_model || 'N/A'}</Typography>
+                <Typography><strong>Registration:</strong> {viewDialog.rider.vehicle?.vehicle_registration || viewDialog.rider.vehicle_registration || 'Not Provided'}</Typography>
+                <Typography><strong>License Number:</strong> {viewDialog.rider.driving_license_number || 'N/A'}</Typography>
               </div>
               
               {/* Bank Details */}
-              {(viewDialog.rider.bank_name || viewDialog.rider.account_number) && (
+              {(viewDialog.rider.bank?.bank_name || viewDialog.rider.bank_name || viewDialog.rider.bank?.account_number || viewDialog.rider.account_number) && (
                 <div style={{ marginBottom: '16px' }}>
                   <Typography variant="h6" sx={{ mb: 2, color: '#9c27b0' }}>Bank Details</Typography>
-                  <Typography><strong>Bank:</strong> {viewDialog.rider.bank_name || 'N/A'}</Typography>
-                  <Typography><strong>Account Number:</strong> {viewDialog.rider.account_number || 'N/A'}</Typography>
-                  <Typography><strong>Account Title:</strong> {viewDialog.rider.account_title || 'N/A'}</Typography>
+                  <Typography><strong>Bank:</strong> {viewDialog.rider.bank?.bank_name || viewDialog.rider.bank_name || 'N/A'}</Typography>
+                  <Typography><strong>Account Number:</strong> {viewDialog.rider.bank?.account_number || viewDialog.rider.account_number || 'Not Provided'}</Typography>
+                  <Typography><strong>Account Title:</strong> {viewDialog.rider.bank?.account_title || viewDialog.rider.account_title || 'N/A'}</Typography>
                 </div>
               )}
               
@@ -231,68 +236,19 @@ const RegisteredRiders = () => {
               <div>
                 <Typography variant="h6" sx={{ mb: 2, color: '#f44336' }}>Documents</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {viewDialog.rider.profile_picture && (
-                    <Button 
-                      variant="outlined" 
-                      size="small" 
-                      onClick={() => window.open(`http://127.0.0.1:8000/uploads/${viewDialog.rider.profile_picture}`, '_blank')}
-                    >
-                      Profile Picture
-                    </Button>
-                  )}
-                  {viewDialog.rider.cnic_front_image && (
-                    <Button 
-                      variant="outlined" 
-                      size="small" 
-                      onClick={() => window.open(`http://127.0.0.1:8000/uploads/${viewDialog.rider.cnic_front_image}`, '_blank')}
-                    >
-                      CNIC Front
-                    </Button>
-                  )}
-                  {viewDialog.rider.cnic_back_image && (
-                    <Button 
-                      variant="outlined" 
-                      size="small" 
-                      onClick={() => window.open(`http://127.0.0.1:8000/uploads/${viewDialog.rider.cnic_back_image}`, '_blank')}
-                    >
-                      CNIC Back
-                    </Button>
-                  )}
-                  {viewDialog.rider.driving_license_image && (
-                    <Button 
-                      variant="outlined" 
-                      size="small" 
-                      onClick={() => window.open(`http://127.0.0.1:8000/uploads/${viewDialog.rider.driving_license_image}`, '_blank')}
-                    >
-                      License Image
-                    </Button>
-                  )}
-                  {viewDialog.rider.vehicle_registration_book && (
-                    <Button 
-                      variant="outlined" 
-                      size="small" 
-                      onClick={() => window.open(`http://127.0.0.1:8000/uploads/${viewDialog.rider.vehicle_registration_book}`, '_blank')}
-                    >
-                      Vehicle Book
-                    </Button>
-                  )}
-                  {viewDialog.rider.vehicle_image && (
-                    <Button 
-                      variant="outlined" 
-                      size="small" 
-                      onClick={() => window.open(`http://127.0.0.1:8000/uploads/${viewDialog.rider.vehicle_image}`, '_blank')}
-                    >
-                      Vehicle Image
-                    </Button>
-                  )}
-                  {viewDialog.rider.electricity_bill && (
-                    <Button 
-                      variant="outlined" 
-                      size="small" 
-                      onClick={() => window.open(`http://127.0.0.1:8000/uploads/${viewDialog.rider.electricity_bill}`, '_blank')}
-                    >
-                      Electricity Bill
-                    </Button>
+                  {viewDialog.rider.documents?.length > 0 ? (
+                    viewDialog.rider.documents.map((doc, idx) => (
+                      <Button 
+                        key={idx}
+                        variant="outlined" 
+                        size="small" 
+                        onClick={() => window.open(`http://127.0.0.1:8000/storage/${doc.document_path}`, '_blank')}
+                      >
+                        {doc.document_type?.replace('_', ' ').toUpperCase()}
+                      </Button>
+                    ))
+                  ) : (
+                    <Typography color="text.secondary">No documents uploaded</Typography>
                   )}
                 </Box>
               </div>

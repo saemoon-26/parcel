@@ -41,47 +41,27 @@ const RiderLogin = () => {
     setError('')
     
     try {
-      // Check registration status first
-      const statusResponse = await axios.post('http://localhost:8000/api/rider/check-status', {
-        email: formData.email
-      })
-      
-      const status = statusResponse.data.status
-      
-      if (status === 'pending') {
-        setError('Your registration is under review. Please wait for admin approval.')
-        setLoading(false)
-        return
-      }
-      
-      if (status === 'rejected') {
-        setError(`Your registration was rejected. Reason: ${statusResponse.data.rejection_reason || 'Please contact support.'}`)
-        setLoading(false)
-        return
-      }
-      
-      if (status === 'not_found') {
-        setError('No registration found with this email. Please register first.')
-        setLoading(false)
-        return
-      }
-      
-      // Try login for approved riders
       const response = await axios.post('http://localhost:8000/api/rider/login', {
         email: formData.email,
         password: formData.password
       })
       
-      // Save token
-      localStorage.setItem('riderToken', response.data.token)
-      localStorage.setItem('riderData', JSON.stringify(response.data.rider))
+      console.log('Login response:', response.data)
       
-      setSuccess('Login successful! Redirecting...')
-      setTimeout(() => {
-        navigate('/rider/dashboard')
-      }, 1500)
+      if (response.data.status) {
+        const riderData = response.data.rider || response.data.user
+        console.log('Saving rider data:', riderData)
+        localStorage.setItem('riderToken', response.data.token)
+        localStorage.setItem('riderData', JSON.stringify(riderData))
+        
+        setSuccess('Login successful! Redirecting...')
+        setTimeout(() => {
+          navigate('/rider-dashboard')
+        }, 1000)
+      }
       
     } catch (error) {
+      console.error('Login error:', error.response?.data)
       if (error.response?.status === 401) {
         setError('Invalid email or password.')
       } else if (error.response?.data?.message) {

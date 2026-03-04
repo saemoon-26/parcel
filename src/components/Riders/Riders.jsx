@@ -1,365 +1,619 @@
-import React, { useState, useEffect } from 'react'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Button,
-  Typography,
-  Box,
-  IconButton,
-  Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  MenuItem,
-  Chip
-} from '@mui/material'
-import { Add, Visibility, Edit, Delete } from '@mui/icons-material'
+import { useState, useEffect, useMemo, memo, useRef, useCallback } from 'react'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Box, IconButton, Tooltip, Chip, Select, MenuItem, FormControl, InputLabel } from '@mui/material'
+import { Edit, Delete } from '@mui/icons-material'
 import axios from 'axios'
 
-const Riders = () => {
+const CITIES = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala', 'Hyderabad', 'Sukkur', 'Bahawalpur', 'Sargodha', 'Abbottabad', 'Mardan', 'Gujrat', 'Larkana', 'Sheikhupura', 'Rahim Yar Khan']
+const STATES = ['Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan', 'Gilgit-Baltistan', 'Azad Kashmir', 'Islamabad Capital Territory']
+const COUNTRIES = ['Pakistan', 'India', 'Bangladesh', 'Afghanistan', 'United States', 'United Kingdom', 'Canada', 'Australia', 'UAE', 'Saudi Arabia']
+
+const CITY_ZIPCODES = {
+  'Karachi': '75000', 'Lahore': '54000', 'Islamabad': '44000', 'Rawalpindi': '46000',
+  'Faisalabad': '38000', 'Multan': '60000', 'Peshawar': '25000', 'Quetta': '87000',
+  'Sialkot': '51310', 'Gujranwala': '52250', 'Hyderabad': '71000', 'Sukkur': '65200',
+  'Bahawalpur': '63100', 'Sargodha': '40100', 'Abbottabad': '22010', 'Mardan': '23200',
+  'Gujrat': '50700', 'Larkana': '77150', 'Sheikhupura': '39350', 'Rahim Yar Khan': '64200'
+}
+
+const Riders = memo(function Riders() {
   const [riders, setRiders] = useState([])
   const [loading, setLoading] = useState(true)
-  const [viewDialog, setViewDialog] = useState({ open: false, rider: null })
-  const [editDialog, setEditDialog] = useState({ open: false, rider: null })
-  const [addDialog, setAddDialog] = useState(false)
-  const [addFormData, setAddFormData] = useState({
-    name: '',
+  const [open, setOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingRider, setEditingRider] = useState(null)
+  const [zipcode, setZipcode] = useState('')
+  const formDataRef = useRef({
+    first_name: '',
+    last_name: '',
+    father_name: '',
+    cnic_number: '',
     email: '',
-    phone: '',
+    mobile_primary: '',
+    mobile_alternate: '',
+    per_parcel_payout: '',
+    vehicle_type: '',
+    vehicle_brand: '',
+    vehicle_model: '',
+    vehicle_registration: '',
+    driving_license_number: '',
     city: '',
-    status: 'Active'
+    address: '',
+    country: '',
+    state: '',
+    zipcode: ''
   })
-  const [addLoading, setAddLoading] = useState(false)
 
-  // Mock data - replace with actual API call
   useEffect(() => {
-    const mockRiders = [
-      {
-        id: 1,
-        name: 'John Doe',
-        email: 'john@example.com',
-        phone: '+1234567890',
-        city: 'New York',
-        status: 'Active',
-        rating: 4.5,
-        totalDeliveries: 150
-      },
-      {
-        id: 2,
-        name: 'Jane Smith',
-        email: 'jane@example.com',
-        phone: '+1234567891',
-        city: 'Los Angeles',
-        status: 'Active',
-        rating: 4.8,
-        totalDeliveries: 200
-      },
-      {
-        id: 3,
-        name: 'Mike Johnson',
-        email: 'mike@example.com',
-        phone: '+1234567892',
-        city: 'Chicago',
-        status: 'Inactive',
-        rating: 4.2,
-        totalDeliveries: 75
+    const fetchRiders = async () => {
+      try {
+        const response = await axios.get("http://127.0.0.1:8000/api/riders", {
+          timeout: 10000
+        })
+        setRiders(response.data.data)
+      } catch (error) {
+        console.error('API Error:', error)
+      } finally {
+        setLoading(false)
       }
-    ]
+    }
     
-    setTimeout(() => {
-      setRiders(mockRiders)
-      setLoading(false)
-    }, 1000)
+    fetchRiders()
   }, [])
 
-  const handleViewDetails = (rider) => {
-    setViewDialog({ open: true, rider })
-  }
-
-  const handleEdit = (rider) => {
-    setEditDialog({ open: true, rider })
-  }
-
-  const handleDelete = (rider) => {
-    if (window.confirm(`Are you sure you want to delete ${rider.name}?`)) {
-      setRiders(riders.filter(r => r.id !== rider.id))
+  const handleFieldChange = (field) => (e) => {
+    formDataRef.current[field] = e.target.value
+    if (field === 'city') {
+      const zip = CITY_ZIPCODES[e.target.value] || ''
+      formDataRef.current.zipcode = zip
+      setZipcode(zip)
     }
   }
 
-  const handleAddRider = async () => {
-    if (!addFormData.name || !addFormData.email || !addFormData.phone || !addFormData.city) {
-      alert('Please fill all required fields')
-      return
-    }
-
-    setAddLoading(true)
+  const handleSubmit = async () => {
     try {
-      const riderData = {
-        name: addFormData.name,
-        email: addFormData.email,
-        phone: addFormData.phone,
-        city: addFormData.city,
-        vehicle_type: 'Bike',
-        status: addFormData.status
+      const submitData = {
+        full_name: formDataRef.current.first_name + ' ' + formDataRef.current.last_name,
+        father_name: formDataRef.current.father_name,
+        email: formDataRef.current.email,
+        password: 'rider123',
+        mobile_primary: formDataRef.current.mobile_primary,
+        mobile_alternate: formDataRef.current.mobile_alternate,
+        cnic_number: formDataRef.current.cnic_number,
+        driving_license_number: formDataRef.current.driving_license_number,
+        vehicle_type: formDataRef.current.vehicle_type,
+        vehicle_brand: formDataRef.current.vehicle_brand,
+        vehicle_model: formDataRef.current.vehicle_model,
+        vehicle_registration: formDataRef.current.vehicle_registration,
+        city: formDataRef.current.city,
+        state: formDataRef.current.state,
+        address: formDataRef.current.address,
+        zipcode: formDataRef.current.zipcode,
+        bank_name: '',
+        account_number: '',
+        account_title: ''
       }
-      
-      console.log('Sending rider data:', riderData)
-      const response = await axios.post('http://127.0.0.1:8000/api/riders', riderData)
-      console.log('Response:', response.data)
-      alert('Rider added successfully!')
-      
-      // Reset form and close dialog
-      setAddFormData({
-        name: '',
+      console.log('Submitting to /api/riders:', submitData)
+      await axios.post('http://127.0.0.1:8000/api/riders', submitData, { timeout: 10000 })
+      setOpen(false)
+      formDataRef.current = {
+        first_name: '',
+        last_name: '',
+        father_name: '',
+        cnic_number: '',
         email: '',
-        phone: '',
+        mobile_primary: '',
+        mobile_alternate: '',
+        per_parcel_payout: '',
+        vehicle_type: '',
+        vehicle_brand: '',
+        vehicle_model: '',
+        vehicle_registration: '',
+        driving_license_number: '',
         city: '',
-        status: 'Active'
-      })
-      setAddDialog(false)
+        address: '',
+        country: '',
+        state: '',
+        zipcode: ''
+      }
+      const response = await axios.get("http://127.0.0.1:8000/api/riders", { timeout: 10000 })
+      setRiders(response.data.data)
+      alert('Rider added successfully!')
     } catch (error) {
-      console.error('Error adding rider:', error)
-      console.error('Error response:', error.response?.data)
-      alert(`Error adding rider: ${error.response?.data?.message || error.message}`)
-    } finally {
-      setAddLoading(false)
+      console.error('Error adding rider:', error.response?.data)
+      const errorMessages = error.response?.data?.errors 
+        ? Object.values(error.response.data.errors).flat().join(', ')
+        : error.response?.data?.message || 'Please check console for details'
+      alert(`Error: ${errorMessages}`)
     }
   }
 
-  const handleAddFormChange = (field) => (e) => {
-    setAddFormData(prev => ({ ...prev, [field]: e.target.value }))
+  const handleEdit = useCallback((rider) => {
+    setEditingRider(rider)
+    const zip = rider.address?.zipcode || ''
+    setZipcode(zip)
+    formDataRef.current = {
+      first_name: rider.first_name || '',
+      last_name: rider.last_name || '',
+      father_name: rider.father_name || '',
+      cnic_number: rider.cnic_number || '',
+      email: rider.email || '',
+      mobile_primary: rider.mobile_primary || '',
+      mobile_alternate: rider.mobile_alternate || '',
+      per_parcel_payout: rider.per_parcel_payout || '',
+      vehicle_type: rider.vehicle_type || '',
+      vehicle_brand: rider.vehicle_brand || '',
+      vehicle_model: rider.vehicle_model || '',
+      vehicle_registration: rider.vehicle_registration || '',
+      driving_license_number: rider.driving_license_number || '',
+      city: rider.address?.city || '',
+      address: rider.address?.address || '',
+      country: rider.address?.country || '',
+      state: rider.address?.state || '',
+      zipcode: zip
+    }
+    setEditOpen(true)
+  }, [])
+
+  const handleDelete = useCallback(async (id) => {
+    if (confirm('Are you sure you want to delete this rider?')) {
+      try {
+        await axios.delete(`http://127.0.0.1:8000/api/riders/${id}`, { timeout: 10000 })
+        const response = await axios.get("http://127.0.0.1:8000/api/riders", { timeout: 10000 })
+        setRiders(response.data.data)
+        alert('Rider deleted successfully!')
+      } catch (error) {
+        console.error('Error deleting rider:', error)
+        const errorMessage = error.response?.status === 500 
+          ? 'Server error: Cannot delete rider. It may be associated with other records.'
+          : error.response?.data?.message || 'Error deleting rider'
+        alert(errorMessage)
+      }
+    }
+  }, [])
+
+  const handleEditSubmit = async () => {
+    try {
+      const updateData = {
+        first_name: formDataRef.current.first_name,
+        last_name: formDataRef.current.last_name,
+        father_name: formDataRef.current.father_name,
+        cnic_number: formDataRef.current.cnic_number,
+        email: formDataRef.current.email,
+        mobile_primary: formDataRef.current.mobile_primary,
+        mobile_alternate: formDataRef.current.mobile_alternate,
+        per_parcel_payout: formDataRef.current.per_parcel_payout,
+        vehicle_type: formDataRef.current.vehicle_type,
+        vehicle_brand: formDataRef.current.vehicle_brand,
+        vehicle_model: formDataRef.current.vehicle_model,
+        vehicle_registration: formDataRef.current.vehicle_registration,
+        driving_license_number: formDataRef.current.driving_license_number,
+        city: formDataRef.current.city,
+        address: formDataRef.current.address,
+        country: formDataRef.current.country,
+        state: formDataRef.current.state,
+        zipcode: formDataRef.current.zipcode
+      }
+      console.log('Updating rider:', updateData)
+      await axios.put(`http://127.0.0.1:8000/api/riders/${editingRider.id}`, updateData, { timeout: 10000 })
+      setEditOpen(false)
+      setEditingRider(null)
+      formDataRef.current = {
+        first_name: '',
+        last_name: '',
+        father_name: '',
+        cnic_number: '',
+        email: '',
+        mobile_primary: '',
+        mobile_alternate: '',
+        per_parcel_payout: '',
+        vehicle_type: '',
+        vehicle_brand: '',
+        vehicle_model: '',
+        vehicle_registration: '',
+        driving_license_number: '',
+        city: '',
+        address: '',
+        country: '',
+        state: '',
+        zipcode: ''
+      }
+      const response = await axios.get("http://127.0.0.1:8000/api/riders", { timeout: 10000 })
+      setRiders(response.data.data)
+      alert('Rider updated successfully!')
+    } catch (error) {
+      console.error('Error updating rider:', error)
+      const errorMessages = error.response?.data?.errors 
+        ? Object.values(error.response.data.errors).flat().join(', ')
+        : 'Please check console for details'
+      alert(`Validation Error: ${errorMessages}`)
+    }
   }
 
-  const getStatusColor = (status) => {
-    return status === 'Active' ? 'success' : 'error'
-  }
-
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <Typography>Loading riders...</Typography>
-      </Box>
-    )
-  }
-
-  return (
-    <div>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1">
-          Riders Management
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => setAddDialog(true)}
-        >
-          Add Rider
-        </Button>
-      </Box>
-
-      <TableContainer component={Paper}>
+  const riderTable = useMemo(() => (
+    <TableContainer component={Paper}>
         <Table>
           <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Phone</TableCell>
-              <TableCell>City</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Rating</TableCell>
-              <TableCell>Actions</TableCell>
+            <TableRow style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white'}}>
+              <TableCell style={{color: 'white'}}>ID</TableCell>
+              <TableCell style={{color: 'white'}}>First Name</TableCell>
+              <TableCell style={{color: 'white'}}>Last Name</TableCell>
+              <TableCell style={{color: 'white'}}>Father Name</TableCell>
+              <TableCell style={{color: 'white'}}>CNIC</TableCell>
+              <TableCell style={{color: 'white'}}>Email</TableCell>
+              <TableCell style={{color: 'white'}}>Primary Phone</TableCell>
+              <TableCell style={{color: 'white'}}>Alternate Phone</TableCell>
+              <TableCell style={{color: 'white'}}>Vehicle Type</TableCell>
+              <TableCell style={{color: 'white'}}>Vehicle Brand</TableCell>
+              <TableCell style={{color: 'white'}}>Vehicle Model</TableCell>
+              <TableCell style={{color: 'white'}}>Registration</TableCell>
+              <TableCell style={{color: 'white'}}>License</TableCell>
+              <TableCell style={{color: 'white'}}>Per Parcel Payout</TableCell>
+              <TableCell style={{color: 'white'}}>City</TableCell>
+              <TableCell style={{color: 'white'}}>Address</TableCell>
+              <TableCell style={{color: 'white'}}>State</TableCell>
+              <TableCell style={{color: 'white'}}>Country</TableCell>
+              <TableCell style={{color: 'white'}}>Zipcode</TableCell>
+              <TableCell style={{color: 'white'}}>Assigned Parcels</TableCell>
+              <TableCell style={{color: 'white'}}>Controls</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {riders.map((rider) => (
+            {riders.length > 0 ? riders.map((rider) => (
               <TableRow key={rider.id}>
                 <TableCell>{rider.id}</TableCell>
-                <TableCell>{rider.name}</TableCell>
+                <TableCell>{rider.first_name}</TableCell>
+                <TableCell>{rider.last_name}</TableCell>
+                <TableCell>{rider.father_name || 'N/A'}</TableCell>
+                <TableCell>{rider.cnic_number || 'N/A'}</TableCell>
                 <TableCell>{rider.email}</TableCell>
-                <TableCell>{rider.phone}</TableCell>
-                <TableCell>{rider.city}</TableCell>
+                <TableCell>{rider.mobile_primary || 'N/A'}</TableCell>
+                <TableCell>{rider.mobile_alternate || 'N/A'}</TableCell>
+                <TableCell>{rider.vehicle_type || 'N/A'}</TableCell>
+                <TableCell>{rider.vehicle_brand || 'N/A'}</TableCell>
+                <TableCell>{rider.vehicle_model || 'N/A'}</TableCell>
+                <TableCell>{rider.vehicle_registration || 'N/A'}</TableCell>
+                <TableCell>{rider.driving_license_number || 'N/A'}</TableCell>
+                <TableCell>Rs. {rider.per_parcel_payout}</TableCell>
+                <TableCell>{rider.address?.city || 'N/A'}</TableCell>
+                <TableCell>{rider.address?.address || 'N/A'}</TableCell>
+                <TableCell>{rider.address?.state || 'N/A'}</TableCell>
+                <TableCell>{rider.address?.country || 'N/A'}</TableCell>
+                <TableCell>{rider.address?.zipcode || 'N/A'}</TableCell>
                 <TableCell>
                   <Chip 
-                    label={rider.status} 
-                    color={getStatusColor(rider.status)}
+                    label={rider.assigned_parcels_count || 0} 
+                    color={rider.assigned_parcels_count > 0 ? 'primary' : 'default'}
                     size="small"
                   />
                 </TableCell>
-                <TableCell>{rider.rating}/5</TableCell>
                 <TableCell>
                   <Box display="flex" gap={1}>
-                    <Tooltip title="View Details">
-                      <IconButton size="small" color="primary" onClick={() => handleViewDetails(rider)}>
-                        <Visibility />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Edit">
-                      <IconButton size="small" color="warning" onClick={() => handleEdit(rider)}>
+                    <Tooltip title="Edit Rider">
+                      <IconButton size="small" color="primary" onClick={() => handleEdit(rider)}>
                         <Edit />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton size="small" color="error" onClick={() => handleDelete(rider)}>
+                    <Tooltip title="Delete Rider">
+                      <IconButton size="small" color="error" onClick={() => handleDelete(rider.id)}>
                         <Delete />
                       </IconButton>
                     </Tooltip>
                   </Box>
                 </TableCell>
               </TableRow>
-            ))}
+            )) : (
+              <TableRow>
+                <TableCell colSpan={21} style={{textAlign: 'center'}}>
+                  No riders available
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
+  ), [riders])
 
-      {/* View Details Dialog */}
-      <Dialog 
-        open={viewDialog.open} 
-        onClose={() => setViewDialog({ open: false, rider: null })}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>Rider Details</DialogTitle>
+  if (loading) {
+    return <div style={{textAlign: 'center', padding: '20px', fontSize: '18px'}}>Loading...</div>
+  }
+
+  return (
+    <div>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <p>Total Riders: {riders.length}</p>
+        <Button variant="contained" onClick={() => setOpen(true)}>
+          Add New Rider
+        </Button>
+      </Box>
+      {riderTable}
+      
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth disablePortal key={open ? 'open' : 'closed'}>
+        <DialogTitle>Add New Rider</DialogTitle>
         <DialogContent>
-          {viewDialog.rider && (
-            <Box sx={{ mt: 2 }}>
-              <Typography><strong>Name:</strong> {viewDialog.rider.name}</Typography>
-              <Typography><strong>Email:</strong> {viewDialog.rider.email}</Typography>
-              <Typography><strong>Phone:</strong> {viewDialog.rider.phone}</Typography>
-              <Typography><strong>City:</strong> {viewDialog.rider.city}</Typography>
-              <Typography><strong>Status:</strong> {viewDialog.rider.status}</Typography>
-              <Typography><strong>Rating:</strong> {viewDialog.rider.rating}/5</Typography>
-              <Typography><strong>Total Deliveries:</strong> {viewDialog.rider.totalDeliveries}</Typography>
+          <Box display="flex" flexDirection="column" gap={2} mt={1}>
+            <Box display="flex" gap={2}>
+              <TextField
+                label="First Name"
+                defaultValue={formDataRef.current.first_name}
+                onChange={handleFieldChange('first_name')}
+                fullWidth
+              />
+              <TextField
+                label="Last Name"
+                defaultValue={formDataRef.current.last_name}
+                onChange={handleFieldChange('last_name')}
+                fullWidth
+              />
             </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setViewDialog({ open: false, rider: null })}>
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog 
-        open={editDialog.open} 
-        onClose={() => setEditDialog({ open: false, rider: null })}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Edit Rider</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField
-              label="Name"
-              defaultValue={editDialog.rider?.name}
+              label="Father Name"
+              defaultValue={formDataRef.current.father_name}
+              onChange={handleFieldChange('father_name')}
+              fullWidth
+            />
+            <TextField
+              label="CNIC"
+              defaultValue={formDataRef.current.cnic_number}
+              onChange={handleFieldChange('cnic_number')}
+              placeholder="00000-0000000-0"
               fullWidth
             />
             <TextField
               label="Email"
-              defaultValue={editDialog.rider?.email}
+              type="email"
+              defaultValue={formDataRef.current.email}
+              onChange={handleFieldChange('email')}
               fullWidth
             />
+            <Box display="flex" gap={2}>
+              <TextField
+                label="Primary Phone"
+                defaultValue={formDataRef.current.mobile_primary}
+                onChange={handleFieldChange('mobile_primary')}
+                placeholder="03000000000"
+                fullWidth
+              />
+              <TextField
+                label="Alternate Phone"
+                defaultValue={formDataRef.current.mobile_alternate}
+                onChange={handleFieldChange('mobile_alternate')}
+                fullWidth
+              />
+            </Box>
             <TextField
-              label="Phone"
-              defaultValue={editDialog.rider?.phone}
+              label="Per Parcel Payout"
+              type="number"
+              defaultValue={formDataRef.current.per_parcel_payout}
+              onChange={handleFieldChange('per_parcel_payout')}
               fullWidth
             />
+            <Box display="flex" gap={2}>
+              <FormControl fullWidth>
+                <InputLabel>Vehicle Type</InputLabel>
+                <Select defaultValue={formDataRef.current.vehicle_type} onChange={handleFieldChange('vehicle_type')} label="Vehicle Type">
+                  <MenuItem value="Bike">Bike</MenuItem>
+                  <MenuItem value="Car">Car</MenuItem>
+                  <MenuItem value="Van">Van</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="Vehicle Brand"
+                defaultValue={formDataRef.current.vehicle_brand}
+                onChange={handleFieldChange('vehicle_brand')}
+                fullWidth
+              />
+            </Box>
+            <Box display="flex" gap={2}>
+              <TextField
+                label="Vehicle Model"
+                defaultValue={formDataRef.current.vehicle_model}
+                onChange={handleFieldChange('vehicle_model')}
+                fullWidth
+              />
+              <TextField
+                label="Vehicle Registration"
+                defaultValue={formDataRef.current.vehicle_registration}
+                onChange={handleFieldChange('vehicle_registration')}
+                fullWidth
+              />
+            </Box>
             <TextField
-              label="City"
-              defaultValue={editDialog.rider?.city}
+              label="Driving License Number"
+              defaultValue={formDataRef.current.driving_license_number}
+              onChange={handleFieldChange('driving_license_number')}
               fullWidth
             />
+            <Box display="flex" gap={2}>
+              <FormControl fullWidth>
+                <InputLabel>City</InputLabel>
+                <Select defaultValue={formDataRef.current.city} onChange={handleFieldChange('city')} label="City">
+                  {CITIES.map(city => <MenuItem key={city} value={city}>{city}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>State</InputLabel>
+                <Select defaultValue={formDataRef.current.state} onChange={handleFieldChange('state')} label="State">
+                  {STATES.map(state => <MenuItem key={state} value={state}>{state}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Box>
             <TextField
-              select
-              label="Status"
-              defaultValue={editDialog.rider?.status}
+              label="Address"
+              defaultValue={formDataRef.current.address}
+              onChange={handleFieldChange('address')}
               fullWidth
-            >
-              <MenuItem value="Active">Active</MenuItem>
-              <MenuItem value="Inactive">Inactive</MenuItem>
-            </TextField>
+              multiline
+              rows={2}
+            />
+            <Box display="flex" gap={2}>
+              <FormControl fullWidth>
+                <InputLabel>Country</InputLabel>
+                <Select defaultValue={formDataRef.current.country} onChange={handleFieldChange('country')} label="Country">
+                  {COUNTRIES.map(country => <MenuItem key={country} value={country}>{country}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <TextField
+                label="Zipcode"
+                value={zipcode}
+                onChange={(e) => {
+                  formDataRef.current.zipcode = e.target.value
+                  setZipcode(e.target.value)
+                }}
+                fullWidth
+              />
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditDialog({ open: false, rider: null })}>
-            Cancel
-          </Button>
-          <Button variant="contained">
-            Save Changes
-          </Button>
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={handleSubmit} variant="contained">Add Rider</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Add Rider Dialog */}
-      <Dialog 
-        open={addDialog} 
-        onClose={() => setAddDialog(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Add New Rider</DialogTitle>
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="md" fullWidth disablePortal key={editOpen ? 'edit-open' : 'edit-closed'}>
+        <DialogTitle>Edit Rider</DialogTitle>
         <DialogContent>
-          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box display="flex" flexDirection="column" gap={2} mt={1}>
+            <Box display="flex" gap={2}>
+              <TextField
+                label="First Name"
+                defaultValue={formDataRef.current.first_name}
+                onChange={handleFieldChange('first_name')}
+                fullWidth
+              />
+              <TextField
+                label="Last Name"
+                defaultValue={formDataRef.current.last_name}
+                onChange={handleFieldChange('last_name')}
+                fullWidth
+              />
+            </Box>
             <TextField
-              label="Name *"
-              value={addFormData.name}
-              onChange={handleAddFormChange('name')}
+              label="Father Name"
+              defaultValue={formDataRef.current.father_name}
+              onChange={handleFieldChange('father_name')}
               fullWidth
-              required
             />
             <TextField
-              label="Email *"
+              label="CNIC"
+              defaultValue={formDataRef.current.cnic_number}
+              onChange={handleFieldChange('cnic_number')}
+              placeholder="00000-0000000-0"
+              fullWidth
+            />
+            <TextField
+              label="Email"
               type="email"
-              value={addFormData.email}
-              onChange={handleAddFormChange('email')}
+              defaultValue={formDataRef.current.email}
+              onChange={handleFieldChange('email')}
               fullWidth
-              required
             />
+            <Box display="flex" gap={2}>
+              <TextField
+                label="Primary Phone"
+                defaultValue={formDataRef.current.mobile_primary}
+                onChange={handleFieldChange('mobile_primary')}
+                placeholder="03000000000"
+                fullWidth
+              />
+              <TextField
+                label="Alternate Phone"
+                defaultValue={formDataRef.current.mobile_alternate}
+                onChange={handleFieldChange('mobile_alternate')}
+                fullWidth
+              />
+            </Box>
             <TextField
-              label="Phone *"
-              value={addFormData.phone}
-              onChange={handleAddFormChange('phone')}
+              label="Per Parcel Payout"
+              type="number"
+              defaultValue={formDataRef.current.per_parcel_payout}
+              onChange={handleFieldChange('per_parcel_payout')}
               fullWidth
-              required
             />
+            <Box display="flex" gap={2}>
+              <FormControl fullWidth>
+                <InputLabel>Vehicle Type</InputLabel>
+                <Select defaultValue={formDataRef.current.vehicle_type} onChange={handleFieldChange('vehicle_type')} label="Vehicle Type">
+                  <MenuItem value="Bike">Bike</MenuItem>
+                  <MenuItem value="Car">Car</MenuItem>
+                  <MenuItem value="Van">Van</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="Vehicle Brand"
+                defaultValue={formDataRef.current.vehicle_brand}
+                onChange={handleFieldChange('vehicle_brand')}
+                fullWidth
+              />
+            </Box>
+            <Box display="flex" gap={2}>
+              <TextField
+                label="Vehicle Model"
+                defaultValue={formDataRef.current.vehicle_model}
+                onChange={handleFieldChange('vehicle_model')}
+                fullWidth
+              />
+              <TextField
+                label="Vehicle Registration"
+                defaultValue={formDataRef.current.vehicle_registration}
+                onChange={handleFieldChange('vehicle_registration')}
+                fullWidth
+              />
+            </Box>
             <TextField
-              label="City *"
-              value={addFormData.city}
-              onChange={handleAddFormChange('city')}
+              label="Driving License Number"
+              defaultValue={formDataRef.current.driving_license_number}
+              onChange={handleFieldChange('driving_license_number')}
               fullWidth
-              required
             />
+            <Box display="flex" gap={2}>
+              <FormControl fullWidth>
+                <InputLabel>City</InputLabel>
+                <Select defaultValue={formDataRef.current.city} onChange={handleFieldChange('city')} label="City">
+                  {CITIES.map(city => <MenuItem key={city} value={city}>{city}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>State</InputLabel>
+                <Select defaultValue={formDataRef.current.state} onChange={handleFieldChange('state')} label="State">
+                  {STATES.map(state => <MenuItem key={state} value={state}>{state}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Box>
             <TextField
-              select
-              label="Status"
-              value={addFormData.status}
-              onChange={handleAddFormChange('status')}
+              label="Address"
+              defaultValue={formDataRef.current.address}
+              onChange={handleFieldChange('address')}
               fullWidth
-            >
-              <MenuItem value="Active">Active</MenuItem>
-              <MenuItem value="Inactive">Inactive</MenuItem>
-            </TextField>
+              multiline
+              rows={2}
+            />
+            <Box display="flex" gap={2}>
+              <FormControl fullWidth>
+                <InputLabel>Country</InputLabel>
+                <Select defaultValue={formDataRef.current.country} onChange={handleFieldChange('country')} label="Country">
+                  {COUNTRIES.map(country => <MenuItem key={country} value={country}>{country}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <TextField
+                label="Zipcode"
+                value={zipcode}
+                onChange={(e) => {
+                  formDataRef.current.zipcode = e.target.value
+                  setZipcode(e.target.value)
+                }}
+                fullWidth
+              />
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAddDialog(false)}>
-            Cancel
-          </Button>
-          <Button variant="contained" onClick={handleAddRider} disabled={addLoading}>
-            {addLoading ? 'Adding...' : 'Add Rider'}
-          </Button>
+          <Button onClick={() => setEditOpen(false)}>Cancel</Button>
+          <Button onClick={handleEditSubmit} variant="contained">Update Rider</Button>
         </DialogActions>
       </Dialog>
     </div>
   )
-}
+})
 
 export default Riders

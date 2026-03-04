@@ -5,13 +5,41 @@ import RiderLiveTracking from './RiderLiveTracking'
 
 const RiderDashboard = () => {
   const navigate = useNavigate()
-  const [riderId, setRiderId] = useState('')
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [riderData, setRiderData] = useState(null)
   const [parcels, setParcels] = useState([])
   const [filter, setFilter] = useState('all')
   const [selectedParcel, setSelectedParcel] = useState(null)
   const [trackingParcel, setTrackingParcel] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  const loadParcels = async (id) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/riders/${id}/parcels`)
+      const data = await response.json()
+      
+      if (data.status) {
+        setParcels(data.data || [])
+      }
+    } catch (error) {
+      console.error('Error loading parcels:', error)
+      setParcels([])
+    }
+  }
+
+  useEffect(() => {
+    const storedRiderData = localStorage.getItem('riderData')
+    if (!storedRiderData) {
+      navigate('/rider/login')
+      return
+    }
+    const rider = JSON.parse(storedRiderData)
+    console.log('Rider data from localStorage:', rider)
+    setRiderData(rider)
+    if (rider.id) {
+      loadParcels(rider.id)
+    }
+    setLoading(false)
+  }, [])
 
   // Handle browser back button
   useEffect(() => {
@@ -33,45 +61,10 @@ const RiderDashboard = () => {
     }
   }, [trackingParcel])
 
-  const handleLogin = async () => {
-    if (!riderId.trim()) return
-    
-    try {
-      const response = await fetch(`http://127.0.0.1:8000/api/riders/${riderId}`)
-      const data = await response.json()
-      
-      if (data.status && data.data) {
-        setRiderData(data.data)
-        setIsLoggedIn(true)
-        loadParcels(riderId)
-      } else {
-        alert('Rider ID not found!')
-      }
-    } catch (error) {
-      alert('Error connecting to server!')
-    }
-  }
-
-  const loadParcels = async (id) => {
-    try {
-      const response = await fetch(`http://127.0.0.1:8000/api/riders/${id}/parcels`)
-      const data = await response.json()
-      
-      if (data.status) {
-        setParcels(data.data || [])
-      }
-    } catch (error) {
-      console.error('Error loading parcels:', error)
-      setParcels([])
-    }
-  }
-
   const handleLogout = () => {
-    setIsLoggedIn(false)
-    setRiderId('')
-    setRiderData(null)
-    setParcels([])
-    setFilter('all')
+    localStorage.removeItem('riderToken')
+    localStorage.removeItem('riderData')
+    navigate('/rider/login')
   }
 
   const getFilteredParcels = () => {
@@ -111,31 +104,8 @@ const RiderDashboard = () => {
     delivered: parcels.filter(p => p.parcel_status === 'delivered').length
   }
 
-  if (!isLoggedIn) {
-    return (
-      <div className="rider-login-container">
-        <div className="rider-login-card">
-          <div className="login-header">
-            <div className="login-icon">🚴</div>
-            <h1>Rider Dashboard</h1>
-            <p>Enter your Rider ID to access your deliveries</p>
-          </div>
-          <div className="login-form">
-            <input
-              type="text"
-              placeholder="Enter Rider ID"
-              value={riderId}
-              onChange={(e) => setRiderId(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-              className="rider-id-input"
-            />
-            <button onClick={handleLogin} className="login-btn">
-              Access Dashboard
-            </button>
-          </div>
-        </div>
-      </div>
-    )
+  if (loading) {
+    return <div>Loading...</div>
   }
 
   return (
