@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, memo, useRef, useCallback } from 'react'
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Box, IconButton, Tooltip, Chip, Select, MenuItem, FormControl, InputLabel } from '@mui/material'
-import { Edit, Delete } from '@mui/icons-material'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Box, IconButton, Tooltip, Chip, Select, MenuItem, FormControl, InputLabel, Avatar, Typography } from '@mui/material'
+import { Edit, Delete, Visibility, Person } from '@mui/icons-material'
 import axios from 'axios'
 
 const CITIES = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala', 'Hyderabad', 'Sukkur', 'Bahawalpur', 'Sargodha', 'Abbottabad', 'Mardan', 'Gujrat', 'Larkana', 'Sheikhupura', 'Rahim Yar Khan']
@@ -20,7 +20,9 @@ const Riders = memo(function Riders() {
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [viewOpen, setViewOpen] = useState(false)
   const [editingRider, setEditingRider] = useState(null)
+  const [viewingRider, setViewingRider] = useState(null)
   const [zipcode, setZipcode] = useState('')
   const formDataRef = useRef({
     first_name: '',
@@ -234,51 +236,27 @@ const Riders = memo(function Riders() {
         <Table>
           <TableHead>
             <TableRow style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white'}}>
-              <TableCell style={{color: 'white'}}>ID</TableCell>
-              <TableCell style={{color: 'white'}}>First Name</TableCell>
-              <TableCell style={{color: 'white'}}>Last Name</TableCell>
-              <TableCell style={{color: 'white'}}>Father Name</TableCell>
-              <TableCell style={{color: 'white'}}>CNIC</TableCell>
+              <TableCell style={{color: 'white'}}>Rider ID</TableCell>
+              <TableCell style={{color: 'white'}}>Name</TableCell>
               <TableCell style={{color: 'white'}}>Email</TableCell>
-              <TableCell style={{color: 'white'}}>Primary Phone</TableCell>
-              <TableCell style={{color: 'white'}}>Alternate Phone</TableCell>
-              <TableCell style={{color: 'white'}}>Vehicle Type</TableCell>
-              <TableCell style={{color: 'white'}}>Vehicle Brand</TableCell>
-              <TableCell style={{color: 'white'}}>Vehicle Model</TableCell>
-              <TableCell style={{color: 'white'}}>Registration</TableCell>
-              <TableCell style={{color: 'white'}}>License</TableCell>
-              <TableCell style={{color: 'white'}}>Per Parcel Payout</TableCell>
+              <TableCell style={{color: 'white'}}>Phone</TableCell>
+              <TableCell style={{color: 'white'}}>Vehicle</TableCell>
               <TableCell style={{color: 'white'}}>City</TableCell>
               <TableCell style={{color: 'white'}}>Address</TableCell>
-              <TableCell style={{color: 'white'}}>State</TableCell>
-              <TableCell style={{color: 'white'}}>Country</TableCell>
-              <TableCell style={{color: 'white'}}>Zipcode</TableCell>
-              <TableCell style={{color: 'white'}}>Assigned Parcels</TableCell>
-              <TableCell style={{color: 'white'}}>Controls</TableCell>
+              <TableCell style={{color: 'white'}}>Assigned To</TableCell>
+              <TableCell style={{color: 'white'}}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {riders.length > 0 ? riders.map((rider) => (
               <TableRow key={rider.id}>
                 <TableCell>{rider.id}</TableCell>
-                <TableCell>{rider.first_name}</TableCell>
-                <TableCell>{rider.last_name}</TableCell>
-                <TableCell>{rider.father_name || 'N/A'}</TableCell>
-                <TableCell>{rider.cnic_number || 'N/A'}</TableCell>
+                <TableCell>{rider.first_name} {rider.last_name}</TableCell>
                 <TableCell>{rider.email}</TableCell>
-                <TableCell>{rider.mobile_primary || 'N/A'}</TableCell>
-                <TableCell>{rider.mobile_alternate || 'N/A'}</TableCell>
-                <TableCell>{rider.vehicle_type || 'N/A'}</TableCell>
-                <TableCell>{rider.vehicle_brand || 'N/A'}</TableCell>
-                <TableCell>{rider.vehicle_model || 'N/A'}</TableCell>
-                <TableCell>{rider.vehicle_registration || 'N/A'}</TableCell>
-                <TableCell>{rider.driving_license_number || 'N/A'}</TableCell>
-                <TableCell>Rs. {rider.per_parcel_payout}</TableCell>
+                <TableCell>{rider.mobile_primary}</TableCell>
+                <TableCell>{rider.vehicle_type} - {rider.vehicle_brand}</TableCell>
                 <TableCell>{rider.address?.city || 'N/A'}</TableCell>
                 <TableCell>{rider.address?.address || 'N/A'}</TableCell>
-                <TableCell>{rider.address?.state || 'N/A'}</TableCell>
-                <TableCell>{rider.address?.country || 'N/A'}</TableCell>
-                <TableCell>{rider.address?.zipcode || 'N/A'}</TableCell>
                 <TableCell>
                   <Chip 
                     label={rider.assigned_parcels_count || 0} 
@@ -288,6 +266,14 @@ const Riders = memo(function Riders() {
                 </TableCell>
                 <TableCell>
                   <Box display="flex" gap={1}>
+                    <Tooltip title="View Details">
+                      <IconButton size="small" color="info" onClick={() => {
+                        setViewingRider(rider)
+                        setViewOpen(true)
+                      }}>
+                        <Visibility />
+                      </IconButton>
+                    </Tooltip>
                     <Tooltip title="Edit Rider">
                       <IconButton size="small" color="primary" onClick={() => handleEdit(rider)}>
                         <Edit />
@@ -303,7 +289,7 @@ const Riders = memo(function Riders() {
               </TableRow>
             )) : (
               <TableRow>
-                <TableCell colSpan={21} style={{textAlign: 'center'}}>
+                <TableCell colSpan={9} style={{textAlign: 'center'}}>
                   No riders available
                 </TableCell>
               </TableRow>
@@ -467,6 +453,54 @@ const Riders = memo(function Riders() {
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
           <Button onClick={handleSubmit} variant="contained">Add Rider</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          <Box display="flex" alignItems="center">
+            <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
+              <Person />
+            </Avatar>
+            Registration Details - {viewingRider?.first_name} {viewingRider?.last_name}
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {viewingRider && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="h6" color="primary" gutterBottom>Personal Information</Typography>
+              <Box sx={{ mb: 3 }}>
+                <Typography><strong>Full Name:</strong> {viewingRider.first_name} {viewingRider.last_name}</Typography>
+                <Typography><strong>Father Name:</strong> {viewingRider.father_name || 'N/A'}</Typography>
+                <Typography><strong>CNIC:</strong> {viewingRider.cnic_number || 'N/A'}</Typography>
+                <Typography><strong>Email:</strong> {viewingRider.email}</Typography>
+                <Typography><strong>Primary Phone:</strong> {viewingRider.mobile_primary || 'N/A'}</Typography>
+                <Typography><strong>Alternate Phone:</strong> {viewingRider.mobile_alternate || 'N/A'}</Typography>
+                <Typography><strong>Address:</strong> {viewingRider.address?.address || 'N/A'}</Typography>
+              </Box>
+
+              <Typography variant="h6" color="primary" gutterBottom>Location</Typography>
+              <Box sx={{ mb: 3 }}>
+                <Typography><strong>City:</strong> {viewingRider.address?.city || 'N/A'}</Typography>
+                <Typography><strong>State:</strong> {viewingRider.address?.state || 'N/A'}</Typography>
+              </Box>
+
+              <Typography variant="h6" color="primary" gutterBottom>Vehicle Information</Typography>
+              <Box sx={{ mb: 3 }}>
+                <Typography><strong>Type:</strong> {viewingRider.vehicle_type || 'N/A'}</Typography>
+                <Typography><strong>Brand:</strong> {viewingRider.vehicle_brand || 'N/A'}</Typography>
+                <Typography><strong>Model:</strong> {viewingRider.vehicle_model || 'N/A'}</Typography>
+                <Typography><strong>Registration:</strong> {viewingRider.vehicle_registration || 'Not Provided'}</Typography>
+                <Typography><strong>License Number:</strong> {viewingRider.driving_license_number || 'N/A'}</Typography>
+              </Box>
+
+              <Typography variant="h6" color="primary" gutterBottom>Documents</Typography>
+              <Typography>No documents uploaded</Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
 

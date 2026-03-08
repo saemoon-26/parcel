@@ -231,29 +231,21 @@ const Products = () => {
     try {
       const dataToSend = {
         ...formData,
+        assigned_to: formData.assigned_to || null,
         parcel_status: formData.parcel_status.replace(/ /g, '_')
       }
       const response = await axios.post('http://127.0.0.1:8000/api/parcels', dataToSend, { timeout: 10000 })
-      const parcelId = response.data?.data?.parcel_id
-      
-      if (parcelId && formData.pickup_lat && formData.pickup_lng) {
-        try {
-          const assignResponse = await axios.post('http://127.0.0.1:8000/api/assign-rider', {
-            parcel_id: parcelId,
-            pickup_lat: parseFloat(formData.pickup_lat),
-            pickup_lng: parseFloat(formData.pickup_lng)
-          })
-          if (assignResponse.data?.success) {
-            console.log('Rider auto-assigned:', assignResponse.data.data.rider.name)
-          }
-        } catch (err) {
-          console.log('Auto-assign failed, continuing without rider')
-        }
-      }
+      const data = response.data
+      const parcelId = data?.data?.parcel_id || data?.parcel_id
       
       setNewParcelId(parcelId)
       
-      // Reset form but keep dialog open
+      // Show AI assignment result
+      const assignedRider = data.assigned_rider_name || 'N/A'
+      const aiStatus = data.ai_assignment === 'success' ? '✅ AI assigned rider' : '⚠️ No rider available in city'
+      alert(`✅ Parcel added successfully!\n\nTracking: ${data.tracking_code}\nAssigned to: ${assignedRider}\n${aiStatus}`)
+      
+      // Reset form
       setFormData({
         tracking_code: '',
         client_name: '',
@@ -279,8 +271,6 @@ const Products = () => {
         })
       
       await fetchParcels()
-      alert('✅ Parcel added successfully!')
-      
     } catch (error) {
       const errorMessages = error.response?.data?.errors 
         ? Object.values(error.response.data.errors).flat().join(', ')
@@ -352,11 +342,21 @@ const Products = () => {
 
   const handleRetryAssignments = useCallback(async () => {
     try {
+      console.log('Calling auto-assign-pending API...')
       const response = await axios.post('http://127.0.0.1:8000/api/auto-assign-pending')
-      alert(`✅ ${response.data.assigned} parcels assigned!`)
-      fetchParcels()
+      console.log('Response:', response.data)
+      
+      const assignedCount = response.data.assigned || 0
+      if (assignedCount > 0) {
+        alert(`✅ ${assignedCount} parcel(s) assigned successfully using AI!`)
+      } else {
+        alert('ℹ️ No pending parcels to assign. All parcels are already assigned or no riders available in pickup cities.')
+      }
+      
+      await fetchParcels()
     } catch (error) {
-      alert('Error retrying assignments')
+      console.error('Auto-assign error:', error.response?.data || error.message)
+      alert(`❌ Error: ${error.response?.data?.message || 'Failed to retry assignments'}`)  
     }
   }, [fetchParcels])
 
@@ -585,6 +585,9 @@ const Products = () => {
                 {cities.map(city => <MenuItem key={city} value={city}>{city}</MenuItem>)}
               </Select>
             </FormControl>
+            <Alert severity="info" sx={{ mt: 1 }}>
+              🤖 Rider will be automatically assigned by AI based on city and availability
+            </Alert>
             <FormControl fullWidth>
               <InputLabel>Status</InputLabel>
               <Select name="parcel_status" value={formData.parcel_status} onChange={handleChange} label="Status">
