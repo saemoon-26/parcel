@@ -493,9 +493,6 @@ const Riders = memo(function Riders() {
                 <Typography><strong>Registration:</strong> {viewingRider.vehicle_registration || 'Not Provided'}</Typography>
                 <Typography><strong>License Number:</strong> {viewingRider.driving_license_number || 'N/A'}</Typography>
               </Box>
-
-              <Typography variant="h6" color="primary" gutterBottom>Documents</Typography>
-              <Typography>No documents uploaded</Typography>
             </Box>
           )}
         </DialogContent>

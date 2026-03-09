@@ -10,7 +10,6 @@ import TrackParcel from './components/TrackParcel/TrackParcel'
 import RiderDashboard from './components/RiderDashboard/RiderDashboard'
 import RiderRegistrationPage from './components/RiderRegistrationPage/RiderRegistrationPage'
 import RiderLogin from './components/RiderAuth/RiderLogin'
-import RiderStatusCheck from './components/RiderAuth/RiderStatusCheck'
 import MerchantRegistrationPage from './components/MerchantRegistrationPage/MerchantRegistrationPage'
 import MerchantLogin from './components/MerchantAuth/MerchantLogin'
 import MerchantDashboard from './components/MerchantAuth/MerchantDashboard'
@@ -101,7 +100,6 @@ function App() {
         {/* Rider Auth Routes - Without Layout */}
         <Route path="/rider/register" element={<RiderRegistrationPage />} />
         <Route path="/rider/login" element={<RiderLogin />} />
-        <Route path="/rider/status" element={<RiderStatusCheck />} />
         
         {/* Merchant Auth Routes - Without Layout */}
         <Route path="/merchant/register" element={<MerchantRegistrationPage />} />

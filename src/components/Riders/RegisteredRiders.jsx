@@ -143,29 +143,31 @@ const RegisteredRiders = () => {
                 <TableCell>{rider.city || 'N/A'}</TableCell>
                 <TableCell>{rider.vehicle?.vehicle_type || rider.vehicle_type || 'N/A'} - {rider.vehicle?.vehicle_brand || rider.vehicle_brand || 'N/A'}</TableCell>
                 <TableCell>
-                  {rider.status === 'active' ? (
-                    <Chip label="Approved" color="success" size="small" />
-                  ) : rider.status === 'rejected' ? (
-                    <Chip label="Rejected" color="error" size="small" />
-                  ) : (
-                    <Box display="flex" gap={1}>
-                      <Tooltip title="View Details">
-                        <IconButton size="small" color="primary" onClick={() => handleViewDetails(rider)}>
-                          <Visibility />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Approve">
-                        <IconButton size="small" color="success" onClick={() => handleApprove(rider.id)}>
-                          <CheckCircle />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Reject">
-                        <IconButton size="small" color="error" onClick={() => handleReject(rider.id)}>
-                          <Cancel />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  )}
+                  <Box display="flex" gap={1}>
+                    <Tooltip title="View Details">
+                      <IconButton size="small" color="primary" onClick={() => handleViewDetails(rider)}>
+                        <Visibility />
+                      </IconButton>
+                    </Tooltip>
+                    {rider.status === 'active' ? (
+                      <Chip label="Approved" color="success" size="small" />
+                    ) : rider.status === 'rejected' ? (
+                      <Chip label="Rejected" color="error" size="small" />
+                    ) : (
+                      <>
+                        <Tooltip title="Approve">
+                          <IconButton size="small" color="success" onClick={() => handleApprove(rider.id)}>
+                            <CheckCircle />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Reject">
+                          <IconButton size="small" color="error" onClick={() => handleReject(rider.id)}>
+                            <Cancel />
+                          </IconButton>
+                        </Tooltip>
+                      </>
+                    )}
+                  </Box>
                 </TableCell>
               </TableRow>
             )) : (
