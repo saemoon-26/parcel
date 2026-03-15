@@ -21,11 +21,10 @@ function AppContent() {
   const navigate = useNavigate()
 
   const menuItems = [
-    { id: '/', label: 'Dashboard', icon: '📊' },
+    { id: '/admin-dashboard', label: 'Dashboard', icon: '📊' },
     { id: '/products', label: 'Products', icon: '📦' },
     { id: '/riders', label: 'Riders', icon: '🚴' },
     { id: '/merchants', label: 'Merchants', icon: '🏪' },
-    { id: '/rider-dashboard', label: 'Rider Dashboard', icon: '🚚' },
     { id: '/track', label: 'Track Your Parcel', icon: '🔍' },
     { id: '/settings', label: 'Settings', icon: '⚙️' }
   ]
@@ -70,16 +69,14 @@ function AppContent() {
       {sidebarOpen && <div className="overlay" onClick={() => setSidebarOpen(false)}></div>}
 
       <main className="main-content">
-        <div className="content-header">
-          <h2>{menuItems.find(item => item.id === location.pathname)?.label || 'Dashboard'}</h2>
-        </div>
+        
         <div className="content-body">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<WelcomePage />} />
+            <Route path="/admin-dashboard" element={<Dashboard />} />
             <Route path="/products" element={<Products />} />
             <Route path="/riders" element={<RidersMain />} />
             <Route path="/merchants" element={<Merchants />} />
-            <Route path="/rider-dashboard" element={<RiderDashboard />} />
             <Route path="/rider-registration" element={<RiderRegistrationPage />} />
             <Route path="/track" element={<TrackParcel />} />
             <Route path="/settings" element={<Settings />} />
@@ -94,12 +91,10 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Welcome Page */}
-        <Route path="/welcome" element={<WelcomePage />} />
-        
         {/* Rider Auth Routes - Without Layout */}
         <Route path="/rider/register" element={<RiderRegistrationPage />} />
         <Route path="/rider/login" element={<RiderLogin />} />
+        <Route path="/rider/status" element={<RiderStatusCheck />} />
         
         {/* Merchant Auth Routes - Without Layout */}
         <Route path="/merchant/register" element={<MerchantRegistrationPage />} />

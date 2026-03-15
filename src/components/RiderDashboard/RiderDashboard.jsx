@@ -11,14 +11,24 @@ const RiderDashboard = () => {
   const [selectedParcel, setSelectedParcel] = useState(null)
   const [trackingParcel, setTrackingParcel] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [verifyOpen, setVerifyOpen] = useState(false)
+  const [verifyParcel, setVerifyParcel] = useState(null)
+  const [verificationCode, setVerificationCode] = useState('')
+  const [verifyMessage, setVerifyMessage] = useState({ type: '', text: '' })
 
   const loadParcels = async (id) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/riders/${id}/parcels`)
+      const response = await fetch(`http://127.0.0.1:8000/api/parcels`)
       const data = await response.json()
       
-      if (data.status) {
-        setParcels(data.data || [])
+      if (data.status || data.data) {
+        const allParcels = data.data || []
+        const riderParcels = allParcels.filter(parcel => 
+          parcel.assigned_to == id || parcel.rider_id == id
+        )
+        setParcels(riderParcels)
+      } else {
+        setParcels([])
       }
     } catch (error) {
       console.error('Error loading parcels:', error)
@@ -33,12 +43,23 @@ const RiderDashboard = () => {
       return
     }
     const rider = JSON.parse(storedRiderData)
-    console.log('Rider data from localStorage:', rider)
     setRiderData(rider)
-    if (rider.id) {
-      loadParcels(rider.id)
+    
+    const userId = rider.user_id || rider.address?.user_id || rider.id
+    
+    if (userId) {
+      loadParcels(userId)
+      setLoading(false)
+      
+      const interval = setInterval(() => {
+        loadParcels(userId)
+      }, 10000)
+      
+      return () => clearInterval(interval)
+    } else {
+      console.error('No user ID found in:', rider)
+      setLoading(false)
     }
-    setLoading(false)
   }, [])
 
   // Handle browser back button
@@ -61,6 +82,137 @@ const RiderDashboard = () => {
     }
   }, [trackingParcel])
 
+  const handlePickupRequest = async (parcel) => {
+    if (!confirm(`Request pickup approval for parcel ${parcel.tracking_code}?`)) {
+      return
+    }
+    
+    try {
+      const updateData = {
+        tracking_code: parcel.tracking_code,
+        client_name: parcel.client_name || parcel.details?.client_name,
+        client_phone_number: parcel.client_phone_number || parcel.details?.client_phone_number,
+        client_address: parcel.client_address || parcel.details?.client_address,
+        client_email: parcel.client_email || parcel.details?.client_email || '',
+        pickup_location: parcel.pickup_location,
+        pickup_city: parcel.pickup_city,
+        assigned_to: parcel.assigned_to,
+        parcel_status: 'pickup_requested',
+        payment_method: parcel.payment_method || '',
+        rider_payout: parcel.rider_payout || 0,
+        company_payout: parcel.company_payout || 0
+      }
+      
+      const response = await fetch(`http://127.0.0.1:8000/api/parcels/${parcel.parcel_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        alert('✅ Pickup request sent to admin for approval!')
+        const userId = riderData.user_id || riderData.address?.user_id || riderData.id
+        if (userId) {
+          loadParcels(userId)
+        }
+      } else {
+        alert(`❌ Failed: ${data.message || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error requesting pickup:', error)
+      alert('❌ Error sending pickup request')
+    }
+  }
+
+  const handleStartDelivery = async (parcel) => {
+    if (!confirm(`Start delivery for parcel ${parcel.tracking_code}?`)) {
+      return
+    }
+    
+    try {
+      const updateData = {
+        tracking_code: parcel.tracking_code,
+        client_name: parcel.client_name || parcel.details?.client_name,
+        client_phone_number: parcel.client_phone_number || parcel.details?.client_phone_number,
+        client_address: parcel.client_address || parcel.details?.client_address,
+        client_email: parcel.client_email || parcel.details?.client_email || '',
+        pickup_location: parcel.pickup_location,
+        pickup_city: parcel.pickup_city,
+        assigned_to: parcel.assigned_to,
+        parcel_status: 'out_for_delivery',
+        payment_method: parcel.payment_method || '',
+        rider_payout: parcel.rider_payout || 0,
+        company_payout: parcel.company_payout || 0
+      }
+      
+      const response = await fetch(`http://127.0.0.1:8000/api/parcels/${parcel.parcel_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
+      })
+      
+      if (response.ok) {
+        alert('✅ Delivery started!')
+        const userId = riderData.user_id || riderData.address?.user_id || riderData.id
+        if (userId) {
+          loadParcels(userId)
+        }
+      } else {
+        const data = await response.json()
+        alert(`❌ Failed: ${data.message || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error starting delivery:', error)
+      alert('❌ Error starting delivery')
+    }
+  }
+
+  const handleVerifyDelivery = async () => {
+    if (!verificationCode.trim()) {
+      setVerifyMessage({ type: 'error', text: 'Please enter verification code' })
+      return
+    }
+    if (verificationCode.length !== 4) {
+      setVerifyMessage({ type: 'error', text: 'Code must be 4 digits' })
+      return
+    }
+    
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/verify-delivery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tracking_code: verifyParcel.tracking_code,
+          verification_code: verificationCode
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        setVerifyMessage({ type: 'success', text: '✅ Parcel delivered successfully!' })
+        setTimeout(() => {
+          setVerifyOpen(false)
+          setVerificationCode('')
+          setVerifyMessage({ type: '', text: '' })
+          const userId = riderData.user_id || riderData.address?.user_id || riderData.id
+          if (userId) loadParcels(userId)
+        }, 1500)
+      } else {
+        setVerifyMessage({ type: 'error', text: data.message || '❌ Invalid verification code' })
+      }
+    } catch (error) {
+      console.error('Error verifying delivery:', error)
+      setVerifyMessage({ type: 'error', text: '❌ Error verifying delivery' })
+    }
+  }
+
   const handleLogout = () => {
     localStorage.removeItem('riderToken')
     localStorage.removeItem('riderData')
@@ -70,8 +222,8 @@ const RiderDashboard = () => {
   const getFilteredParcels = () => {
     if (filter === 'all') return parcels
     return parcels.filter(p => {
-      if (filter === 'pending') return p.parcel_status === 'pending'
-      if (filter === 'in_transit') return p.parcel_status === 'in_transit'
+      if (filter === 'pending') return p.parcel_status === 'pending' || p.parcel_status === 'pickup_requested'
+      if (filter === 'out_for_delivery') return p.parcel_status === 'out_for_delivery'
       if (filter === 'delivered') return p.parcel_status === 'delivered'
       return true
     })
@@ -80,7 +232,9 @@ const RiderDashboard = () => {
   const getStatusColor = (status) => {
     switch(status) {
       case 'pending': return '#ff9800'
-      case 'in_transit': return '#2196f3'
+      case 'pickup_requested': return '#ff5722'
+      case 'picked_up': return '#9c27b0'
+      case 'out_for_delivery': return '#2196f3'
       case 'delivered': return '#4caf50'
       case 'cancelled': return '#f44336'
       default: return '#9e9e9e'
@@ -90,7 +244,9 @@ const RiderDashboard = () => {
   const getStatusIcon = (status) => {
     switch(status) {
       case 'pending': return '⏳'
-      case 'in_transit': return '🚚'
+      case 'pickup_requested': return '🔔'
+      case 'picked_up': return '📦'
+      case 'out_for_delivery': return '🚚'
       case 'delivered': return '✅'
       case 'cancelled': return '❌'
       default: return '📦'
@@ -99,8 +255,8 @@ const RiderDashboard = () => {
 
   const stats = {
     total: parcels.length,
-    pending: parcels.filter(p => p.parcel_status === 'pending').length,
-    in_transit: parcels.filter(p => p.parcel_status === 'in_transit').length,
+    pending: parcels.filter(p => p.parcel_status === 'pending' || p.parcel_status === 'pickup_requested').length,
+    out_for_delivery: parcels.filter(p => p.parcel_status === 'out_for_delivery').length,
     delivered: parcels.filter(p => p.parcel_status === 'delivered').length
   }
 
@@ -113,14 +269,20 @@ const RiderDashboard = () => {
       <div className="rider-header">
         <div className="rider-info">
           <div className="rider-avatar">
-            {riderData?.first_name?.charAt(0)}{riderData?.last_name?.charAt(0)}
+            {riderData?.first_name?.charAt(0) || riderData?.full_name?.charAt(0) || 'R'}{riderData?.last_name?.charAt(0) || ''}
           </div>
           <div className="rider-details">
-            <h2>{riderData?.first_name} {riderData?.last_name}</h2>
-            <p>ID: {riderData?.id} • {riderData?.phone_number}</p>
+            <h2>{riderData?.first_name || riderData?.full_name || 'Rider'} {riderData?.last_name || ''}</h2>
+            <p>ID: {riderData?.id || riderData?.user_id || riderData?.rider_id || 'N/A'} • {riderData?.phone_number || riderData?.mobile_primary || 'N/A'}</p>
           </div>
         </div>
-        <button onClick={handleLogout} className="logout-btn">Logout</button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => {
+            const userId = riderData.user_id || riderData.address?.user_id || riderData.id
+            if (userId) loadParcels(userId)
+          }} className="refresh-btn">🔄 Refresh</button>
+          <button onClick={handleLogout} className="logout-btn">Logout</button>
+        </div>
       </div>
 
       <div className="stats-grid">
@@ -141,8 +303,8 @@ const RiderDashboard = () => {
         <div className="stat-card transit">
           <div className="stat-icon">🚚</div>
           <div className="stat-info">
-            <h3>{stats.in_transit}</h3>
-            <p>In Transit</p>
+            <h3>{stats.out_for_delivery}</h3>
+            <p>Out for Delivery</p>
           </div>
         </div>
         <div className="stat-card delivered">
@@ -161,8 +323,8 @@ const RiderDashboard = () => {
         <button className={filter === 'pending' ? 'active' : ''} onClick={() => setFilter('pending')}>
           Pending ({stats.pending})
         </button>
-        <button className={filter === 'in_transit' ? 'active' : ''} onClick={() => setFilter('in_transit')}>
-          In Transit ({stats.in_transit})
+        <button className={filter === 'out_for_delivery' ? 'active' : ''} onClick={() => setFilter('out_for_delivery')}>
+          Out for Delivery ({stats.out_for_delivery})
         </button>
         <button className={filter === 'delivered' ? 'active' : ''} onClick={() => setFilter('delivered')}>
           Delivered ({stats.delivered})
@@ -191,8 +353,8 @@ const RiderDashboard = () => {
               
               <div className="parcel-body">
                 <div className="client-info">
-                  <h4>👤 {parcel.client_name}</h4>
-                  <p>📞 {parcel.client_phone_number}</p>
+                  <h4>👤 {parcel.details?.client_name || parcel.client_name}</h4>
+                  <p>📞 {parcel.details?.client_phone_number || parcel.client_phone_number}</p>
                 </div>
 
                 <div className="location-info">
@@ -209,7 +371,7 @@ const RiderDashboard = () => {
                     <span className="location-icon">🎯</span>
                     <div>
                       <p className="location-label">Dropoff</p>
-                      <p className="location-text">{parcel.client_address || parcel.dropoff_location}</p>
+                      <p className="location-text">{parcel.details?.client_address || parcel.dropoff_location || 'N/A'}</p>
                     </div>
                   </div>
                 </div>
@@ -219,10 +381,33 @@ const RiderDashboard = () => {
                     <span>💰 Rider Payout: <strong>Rs. {parcel.rider_payout || 0}</strong></span>
                   </div>
                   <div className="parcel-actions">
+                    {parcel.parcel_status === 'pending' && (
+                      <button className="pickup-btn" onClick={() => handlePickupRequest(parcel)}>
+                        🔔 Request Pickup Approval
+                      </button>
+                    )}
+                    {parcel.parcel_status === 'pickup_requested' && (
+                      <button className="waiting-btn" disabled>
+                        ⏳ Waiting for Admin Approval
+                      </button>
+                    )}
+                    {parcel.parcel_status === 'picked_up' && (
+                      <button className="transit-btn" onClick={() => handleStartDelivery(parcel)}>
+                        🚚 Start Delivery
+                      </button>
+                    )}
+                    {parcel.parcel_status === 'out_for_delivery' && (
+                      <button className="verify-btn" onClick={() => {
+                        setVerifyParcel(parcel)
+                        setVerifyOpen(true)
+                      }}>
+                        ✅ Verify Delivery
+                      </button>
+                    )}
                     <button className="view-details-btn" onClick={() => setSelectedParcel(parcel)}>
                       View Details
                     </button>
-                    {(parcel.parcel_status === 'in_transit' || parcel.parcel_status === 'out_for_delivery') && (
+                    {parcel.parcel_status === 'out_for_delivery' && (
                       <button className="start-tracking-btn" onClick={() => setTrackingParcel(parcel)}>
                         📍 Start Tracking
                       </button>
@@ -240,6 +425,76 @@ const RiderDashboard = () => {
           parcel={trackingParcel} 
           onClose={() => setTrackingParcel(null)} 
         />
+      )}
+
+      {verifyOpen && verifyParcel && (
+        <div className="modal-overlay" onClick={() => {
+          setVerifyOpen(false)
+          setVerificationCode('')
+          setVerifyMessage({ type: '', text: '' })
+        }}>
+          <div className="verify-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="verify-header">
+              <h2>✅ Verify Delivery</h2>
+              <button className="close-btn" onClick={() => {
+                setVerifyOpen(false)
+                setVerificationCode('')
+                setVerifyMessage({ type: '', text: '' })
+              }}>×</button>
+            </div>
+            <div className="verify-body">
+              <div className="verify-parcel-info">
+                <div className="verify-icon">📦</div>
+                <div>
+                  <p className="verify-tracking">{verifyParcel.tracking_code}</p>
+                  <p className="verify-client">{verifyParcel.details?.client_name || verifyParcel.client_name}</p>
+                </div>
+              </div>
+              
+              {verifyMessage.text && (
+                <div className={`verify-message ${verifyMessage.type}`}>
+                  {verifyMessage.text}
+                </div>
+              )}
+              
+              <div className="verify-input-section">
+                <label>Enter 4-Digit Verification Code</label>
+                <input
+                  type="text"
+                  className="verify-code-input"
+                  value={verificationCode}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 4)
+                    setVerificationCode(value)
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && verificationCode.length === 4) {
+                      handleVerifyDelivery()
+                    }
+                  }}
+                  placeholder="0 0 0 0"
+                  maxLength="4"
+                  autoFocus
+                />
+                <p className="verify-hint">📞 Ask customer for the code sent to their email/SMS</p>
+              </div>
+            </div>
+            <div className="verify-footer">
+              <button className="verify-cancel-btn" onClick={() => {
+                setVerifyOpen(false)
+                setVerificationCode('')
+                setVerifyMessage({ type: '', text: '' })
+              }}>Cancel</button>
+              <button 
+                className="verify-submit-btn" 
+                onClick={handleVerifyDelivery}
+                disabled={verificationCode.length !== 4}
+              >
+                ✅ Verify & Complete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {selectedParcel && (
@@ -262,31 +517,27 @@ const RiderDashboard = () => {
               </div>
               <div className="detail-row">
                 <span className="detail-label">Client Name:</span>
-                <span className="detail-value">{selectedParcel.client_name}</span>
+                <span className="detail-value">{selectedParcel.details?.client_name || selectedParcel.client_name || 'N/A'}</span>
               </div>
               <div className="detail-row">
                 <span className="detail-label">Phone:</span>
-                <span className="detail-value">{selectedParcel.client_phone_number}</span>
+                <span className="detail-value">{selectedParcel.details?.client_phone_number || selectedParcel.client_phone_number || 'N/A'}</span>
               </div>
               <div className="detail-row">
                 <span className="detail-label">Email:</span>
-                <span className="detail-value">{selectedParcel.client_email || 'N/A'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Address:</span>
-                <span className="detail-value">{selectedParcel.client_address}</span>
+                <span className="detail-value">{selectedParcel.details?.client_email || selectedParcel.client_email || 'N/A'}</span>
               </div>
               <div className="detail-row">
                 <span className="detail-label">Pickup Location:</span>
                 <span className="detail-value">{selectedParcel.pickup_location}, {selectedParcel.pickup_city}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">Dropoff Location:</span>
-                <span className="detail-value">{selectedParcel.dropoff_location}, {selectedParcel.dropoff_city}</span>
+                <span className="detail-label">Dropoff Address:</span>
+                <span className="detail-value">{selectedParcel.details?.client_address || 'N/A'}</span>
               </div>
               <div className="detail-row">
                 <span className="detail-label">Payment Method:</span>
-                <span className="detail-value">{selectedParcel.payment_method || 'COD'}</span>
+                <span className="detail-value">{selectedParcel.payment_method?.toUpperCase() || 'COD'}</span>
               </div>
               <div className="detail-row">
                 <span className="detail-label">Rider Payout:</span>
@@ -298,7 +549,7 @@ const RiderDashboard = () => {
               </div>
             </div>
             <div className="modal-footer">
-              {(selectedParcel.parcel_status === 'in_transit' || selectedParcel.parcel_status === 'out_for_delivery') && (
+              {(selectedParcel.parcel_status === 'out_for_delivery') && (
                 <button 
                   className="modal-tracking-btn" 
                   onClick={() => {

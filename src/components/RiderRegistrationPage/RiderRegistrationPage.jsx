@@ -8,6 +8,7 @@ const VEHICLE_TYPES = ['Bike', 'Car', 'Van']
 const VEHICLE_BRANDS = ['Honda', 'Suzuki', 'Toyota', 'Yamaha', 'KTM', 'United', 'Changan', 'Hyundai', 'Kia', 'Daihatsu']
 const CITIES = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala']
 const STATES = ['Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan', 'Gilgit-Baltistan', 'Azad Kashmir', 'Islamabad Capital Territory']
+const BANKS = ['HBL', 'UBL', 'MCB', 'Allied Bank', 'Bank Alfalah', 'Meezan Bank', 'Faysal Bank', 'Askari Bank', 'Standard Chartered', 'Bank Al Habib', 'Soneri Bank', 'Silk Bank', 'JS Bank', 'Dubai Islamic Bank', 'Samba Bank']
 
 const RiderRegistrationPage = () => {
   const navigate = useNavigate()
@@ -42,7 +43,26 @@ const RiderRegistrationPage = () => {
   })
 
   const handleFieldChange = (field) => (e) => {
-    setFormData(prev => ({ ...prev, [field]: e.target.value }))
+    let value = e.target.value
+
+    // Auto-format CNIC
+    if (field === 'cnic_number') {
+      value = value.replace(/\D/g, '').slice(0, 13)
+      if (value.length > 5) value = value.slice(0, 5) + '-' + value.slice(5)
+      if (value.length > 13) value = value.slice(0, 13) + '-' + value.slice(13)
+    }
+
+    // Auto-format mobile numbers
+    if (field === 'mobile_primary' || field === 'mobile_alternate') {
+      value = value.replace(/\D/g, '').slice(0, 11)
+    }
+
+    // Format account number
+    if (field === 'account_number') {
+      value = value.replace(/\D/g, '')
+    }
+
+    setFormData(prev => ({ ...prev, [field]: value }))
   }
 
   const handleFileChange = (field) => (e) => {
@@ -86,6 +106,41 @@ const RiderRegistrationPage = () => {
     
     if (missingFields.length > 0) {
       alert(`Please fill in the following required fields: ${missingFields.join(', ')}`)
+      return
+    }
+
+    // Validate CNIC format
+    if (!/^\d{5}-\d{7}-\d$/.test(formData.cnic_number)) {
+      alert('CNIC must be in correct format: 12345-1234567-1')
+      return
+    }
+
+    // Validate mobile numbers
+    if (!/^03\d{9}$/.test(formData.mobile_primary)) {
+      alert('Primary mobile must be 11 digits starting with 03')
+      return
+    }
+
+    if (formData.mobile_alternate && !/^03\d{9}$/.test(formData.mobile_alternate)) {
+      alert('Alternate mobile must be 11 digits starting with 03')
+      return
+    }
+
+    // Validate email
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      alert('Please enter a valid email address')
+      return
+    }
+
+    // Validate password
+    if (formData.password.length < 6) {
+      alert('Password must be at least 6 characters long')
+      return
+    }
+
+    // Validate name
+    if (!/^[a-zA-Z\s]+$/.test(formData.full_name)) {
+      alert('Full name should contain only letters')
       return
     }
     
@@ -133,8 +188,16 @@ const RiderRegistrationPage = () => {
         timeout: 30000
       })
       
-      alert('Registration submitted successfully! Your application is under review. You can now login.')
-      navigate('/rider/login')
+      const checkStatus = window.confirm(
+        'Registration submitted successfully! Your application is under review.\n\n' +
+        'Click OK to check your status now, or Cancel to go to login page.'
+      )
+      
+      if (checkStatus) {
+        navigate('/rider/status')
+      } else {
+        navigate('/rider/login')
+      }
     } catch (error) {
       console.error('Error registering rider:', error)
       console.error('Error response:', error.response)
@@ -492,15 +555,16 @@ const RiderRegistrationPage = () => {
                 
                 <Grid container spacing={2}>
                   <Grid size={12}>
-                    <TextField
-                      label="Bank Name"
-                      placeholder="HBL, UBL, etc."
-                      value={formData.bank_name}
-                      onChange={handleFieldChange('bank_name')}
-                      fullWidth
-                      variant="outlined"
-                      sx={{ mb: 2 }}
-                    />
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                      <InputLabel>Bank Name</InputLabel>
+                      <Select 
+                        value={formData.bank_name}
+                        onChange={handleFieldChange('bank_name')} 
+                        label="Bank Name"
+                      >
+                        {BANKS.map(bank => <MenuItem key={bank} value={bank}>{bank}</MenuItem>)}
+                      </Select>
+                    </FormControl>
                   </Grid>
                   <Grid size={12}>
                     <TextField
