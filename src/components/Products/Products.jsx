@@ -228,12 +228,18 @@ const Products = () => {
       alert('Client address is required')
       return
     }
+    if (!selectedMerchant) {
+      alert('Merchant is required')
+      return
+    }
     try {
       const dataToSend = {
         ...formData,
+        merchant_id: selectedMerchant.id,
         assigned_to: formData.assigned_to || null,
         parcel_status: formData.parcel_status.replace(/ /g, '_')
       }
+      console.log('Sending data with merchant_id:', dataToSend)
       const response = await axios.post('http://127.0.0.1:8000/api/parcels', dataToSend, { timeout: 10000 })
       const data = response.data
       const parcelId = data?.data?.parcel_id || data?.parcel_id
@@ -261,6 +267,10 @@ const Products = () => {
         company_payout: ''
       })
       
+      // Close form and reset merchant
+      setParcelFormOpen(false)
+      setSelectedMerchant(null)
+      
       // Generate new tracking code
       axios.get('http://127.0.0.1:8000/api/generate-tracking-code')
         .then(response => {
@@ -277,7 +287,7 @@ const Products = () => {
         : error.response?.data?.message || 'Error adding parcel'
       alert(`Error: ${errorMessages}`)
     }
-  }, [formData, fetchParcels])
+  }, [formData, selectedMerchant, fetchParcels])
 
   const handleEdit = useCallback((parcel) => {
     setEditingParcel(parcel)
@@ -327,6 +337,21 @@ const Products = () => {
       alert(`Error: ${errorMessages}`)
     }
   }, [editingParcel, formData, fetchParcels])
+
+  const handleApprovePickup = useCallback(async (parcelId) => {
+    if (!confirm('Approve pickup for this parcel?')) return
+    
+    try {
+      await axios.put(`http://127.0.0.1:8000/api/parcels/${parcelId}`, {
+        parcel_status: 'picked_up',
+        picked_up_at: new Date().toISOString()
+      })
+      alert('✅ Pickup approved successfully!')
+      await fetchParcels()
+    } catch (error) {
+      alert('❌ Error approving pickup')
+    }
+  }, [fetchParcels])
 
   const handleDelete = useCallback(async (id) => {
     if (confirm('Are you sure you want to delete this parcel?')) {
@@ -402,6 +427,8 @@ const Products = () => {
       case 'delivered': return 'success'
       case 'in_transit': return 'warning'
       case 'pending': return 'error'
+      case 'pickup_requested': return 'info'
+      case 'picked_up': return 'secondary'
       default: return 'default'
     }
   }, [])
@@ -476,6 +503,13 @@ const Products = () => {
                 <TableCell>Rs. {item.company_payout || '0'}</TableCell>
                 <TableCell>
                   <Box display="flex" gap={1}>
+                    {item.parcel_status === 'pickup_requested' && (
+                      <Tooltip title="Approve Pickup">
+                        <IconButton size="small" color="success" onClick={() => handleApprovePickup(item.parcel_id)}>
+                          <CheckCircle />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                     <Tooltip title="Edit">
                       <IconButton size="small" color="primary" onClick={() => handleEdit(item)}>
                         <Edit />

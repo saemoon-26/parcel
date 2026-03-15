@@ -31,6 +31,7 @@ const Merchants = memo(function Merchants() {
         const response = await axios.get("http://127.0.0.1:8000/api/merchants", {
           timeout: 5000
         })
+        console.log('Merchants data:', response.data.data)
         setMerchants(response.data.data)
       } catch (error) {
         console.error('API Error:', error)

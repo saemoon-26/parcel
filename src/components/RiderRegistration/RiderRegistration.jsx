@@ -42,7 +42,22 @@ const RiderRegistration = () => {
   const [success, setSuccess] = useState(false)
 
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    let formattedValue = value
+
+    // Auto-format CNIC
+    if (name === 'cnic_number') {
+      formattedValue = value.replace(/\D/g, '').slice(0, 13)
+      if (formattedValue.length > 5) formattedValue = formattedValue.slice(0, 5) + '-' + formattedValue.slice(5)
+      if (formattedValue.length > 13) formattedValue = formattedValue.slice(0, 13) + '-' + formattedValue.slice(13)
+    }
+
+    // Auto-format mobile
+    if (name === 'mobile_primary' || name === 'mobile_alternate') {
+      formattedValue = value.replace(/\D/g, '').slice(0, 11)
+    }
+
+    setFormData({ ...formData, [name]: formattedValue })
   }
 
   const handleFileChange = (e) => {
@@ -61,8 +76,24 @@ const RiderRegistration = () => {
         setError('Please fill all required fields')
         return false
       }
+      if (!/^[a-zA-Z\s]+$/.test(formData.full_name)) {
+        setError('Full name should contain only letters')
+        return false
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        setError('Please enter a valid email address')
+        return false
+      }
+      if (formData.password.length < 6) {
+        setError('Password must be at least 6 characters')
+        return false
+      }
       if (!/^03\d{9}$/.test(formData.mobile_primary)) {
-        setError('Invalid mobile number format (03XXXXXXXXX)')
+        setError('Mobile number must be 11 digits starting with 03')
+        return false
+      }
+      if (formData.mobile_alternate && !/^03\d{9}$/.test(formData.mobile_alternate)) {
+        setError('Alternate mobile must be 11 digits starting with 03')
         return false
       }
     }
@@ -72,13 +103,21 @@ const RiderRegistration = () => {
         return false
       }
       if (!/^\d{5}-\d{7}-\d$/.test(formData.cnic_number)) {
-        setError('Invalid CNIC format (XXXXX-XXXXXXX-X)')
+        setError('CNIC must be in format: 12345-1234567-1')
+        return false
+      }
+      if (formData.driving_license_number.length < 5) {
+        setError('Please enter a valid driving license number')
         return false
       }
     }
     if (step === 3) {
       if (!formData.vehicle_type || !formData.address || !formData.city || !formData.state) {
         setError('Please fill all required fields')
+        return false
+      }
+      if (formData.address.length < 10) {
+        setError('Please enter a complete address')
         return false
       }
     }
@@ -224,6 +263,7 @@ const RiderRegistration = () => {
                 <div className="form-group">
                   <label>Vehicle Type *</label>
                   <select name="vehicle_type" value={formData.vehicle_type} onChange={handleInputChange} required>
+                    <option value="">Select Vehicle Type</option>
                     <option value="Bike">Bike</option>
                     <option value="Car">Car</option>
                     <option value="Van">Van</option>
@@ -231,7 +271,19 @@ const RiderRegistration = () => {
                 </div>
                 <div className="form-group">
                   <label>Vehicle Brand</label>
-                  <input type="text" name="vehicle_brand" value={formData.vehicle_brand} onChange={handleInputChange} placeholder="Honda" />
+                  <select name="vehicle_brand" value={formData.vehicle_brand} onChange={handleInputChange}>
+                    <option value="">Select Brand</option>
+                    <option value="Honda">Honda</option>
+                    <option value="Suzuki">Suzuki</option>
+                    <option value="Toyota">Toyota</option>
+                    <option value="Yamaha">Yamaha</option>
+                    <option value="KTM">KTM</option>
+                    <option value="United">United</option>
+                    <option value="Changan">Changan</option>
+                    <option value="Hyundai">Hyundai</option>
+                    <option value="Kia">Kia</option>
+                    <option value="Daihatsu">Daihatsu</option>
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Vehicle Model</label>
@@ -247,11 +299,32 @@ const RiderRegistration = () => {
                 </div>
                 <div className="form-group">
                   <label>City *</label>
-                  <input type="text" name="city" value={formData.city} onChange={handleInputChange} placeholder="Faisalabad" required />
+                  <select name="city" value={formData.city} onChange={handleInputChange} required>
+                    <option value="">Select City</option>
+                    <option value="Karachi">Karachi</option>
+                    <option value="Lahore">Lahore</option>
+                    <option value="Islamabad">Islamabad</option>
+                    <option value="Rawalpindi">Rawalpindi</option>
+                    <option value="Faisalabad">Faisalabad</option>
+                    <option value="Multan">Multan</option>
+                    <option value="Peshawar">Peshawar</option>
+                    <option value="Quetta">Quetta</option>
+                    <option value="Sialkot">Sialkot</option>
+                    <option value="Gujranwala">Gujranwala</option>
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>State *</label>
-                  <input type="text" name="state" value={formData.state} onChange={handleInputChange} placeholder="Punjab" required />
+                  <select name="state" value={formData.state} onChange={handleInputChange} required>
+                    <option value="">Select State</option>
+                    <option value="Punjab">Punjab</option>
+                    <option value="Sindh">Sindh</option>
+                    <option value="Khyber Pakhtunkhwa">Khyber Pakhtunkhwa</option>
+                    <option value="Balochistan">Balochistan</option>
+                    <option value="Gilgit-Baltistan">Gilgit-Baltistan</option>
+                    <option value="Azad Kashmir">Azad Kashmir</option>
+                    <option value="Islamabad Capital Territory">Islamabad Capital Territory</option>
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Zipcode</label>
@@ -290,7 +363,24 @@ const RiderRegistration = () => {
               <div className="form-grid">
                 <div className="form-group">
                   <label>Bank Name</label>
-                  <input type="text" name="bank_name" value={formData.bank_name} onChange={handleInputChange} placeholder="HBL" />
+                  <select name="bank_name" value={formData.bank_name} onChange={handleInputChange}>
+                    <option value="">Select Bank</option>
+                    <option value="HBL">HBL</option>
+                    <option value="UBL">UBL</option>
+                    <option value="MCB">MCB</option>
+                    <option value="Allied Bank">Allied Bank</option>
+                    <option value="Bank Alfalah">Bank Alfalah</option>
+                    <option value="Meezan Bank">Meezan Bank</option>
+                    <option value="Faysal Bank">Faysal Bank</option>
+                    <option value="Askari Bank">Askari Bank</option>
+                    <option value="Standard Chartered">Standard Chartered</option>
+                    <option value="Bank Al Habib">Bank Al Habib</option>
+                    <option value="Soneri Bank">Soneri Bank</option>
+                    <option value="Silk Bank">Silk Bank</option>
+                    <option value="JS Bank">JS Bank</option>
+                    <option value="Dubai Islamic Bank">Dubai Islamic Bank</option>
+                    <option value="Samba Bank">Samba Bank</option>
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Account Number</label>
