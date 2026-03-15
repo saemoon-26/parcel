@@ -46,11 +46,16 @@ const RiderLogin = () => {
         password: formData.password
       })
       
-      console.log('Login response:', response.data)
+      console.log('Full Login response:', response.data)
       
       if (response.data.status) {
-        const riderData = response.data.rider || response.data.user
-        console.log('Saving rider data:', riderData)
+        // Get rider data from response
+        const riderData = response.data.rider || response.data.user || response.data.data
+        
+        console.log('Rider data received:', riderData)
+        console.log('Rider ID:', riderData?.id || riderData?.user_id || riderData?.rider_id)
+        
+        // Save to localStorage
         localStorage.setItem('riderToken', response.data.token)
         localStorage.setItem('riderData', JSON.stringify(riderData))
         
@@ -58,6 +63,8 @@ const RiderLogin = () => {
         setTimeout(() => {
           navigate('/rider-dashboard')
         }, 1000)
+      } else {
+        setError(response.data.message || 'Login failed')
       }
       
     } catch (error) {
@@ -190,28 +197,14 @@ const RiderLogin = () => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Don't have an account?
             </Typography>
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Button
-                variant="outlined"
-                onClick={() => navigate('/rider/register')}
-                sx={{ fontWeight: 'bold', color: '#667eea', borderColor: '#667eea' }}
-              >
-                Register New Account
-              </Button>
-              <Button
-                variant="contained"
-                onClick={() => navigate('/rider/status')}
-                sx={{ 
-                  fontWeight: 'bold', 
-                  background: 'linear-gradient(135deg, #ff9800 0%, #ffb74d 100%)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #f57c00 0%, #ff9800 100%)'
-                  }
-                }}
-              >
-                Check Registration Status
-              </Button>
-            </Box>
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/rider/register')}
+              fullWidth
+              sx={{ fontWeight: 'bold', color: '#667eea', borderColor: '#667eea' }}
+            >
+              Register New Account
+            </Button>
           </Box>
         </CardContent>
       </Card>
