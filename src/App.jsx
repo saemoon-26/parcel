@@ -94,7 +94,7 @@ function App() {
         {/* Rider Auth Routes - Without Layout */}
         <Route path="/rider/register" element={<RiderRegistrationPage />} />
         <Route path="/rider/login" element={<RiderLogin />} />
-        <Route path="/rider-dashboard" element={<RiderDashboard />} />
+        <Route path="/rider/status" element={<RiderStatusCheck />} />
         
         {/* Merchant Auth Routes - Without Layout */}
         <Route path="/merchant/register" element={<MerchantRegistrationPage />} />

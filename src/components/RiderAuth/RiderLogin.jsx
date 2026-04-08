@@ -197,14 +197,28 @@ const RiderLogin = () => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Don't have an account?
             </Typography>
-            <Button
-              variant="outlined"
-              onClick={() => navigate('/rider/register')}
-              fullWidth
-              sx={{ fontWeight: 'bold', color: '#667eea', borderColor: '#667eea' }}
-            >
-              Register New Account
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button
+                variant="outlined"
+                onClick={() => navigate('/rider/register')}
+                sx={{ fontWeight: 'bold', color: '#667eea', borderColor: '#667eea' }}
+              >
+                Register New Account
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => navigate('/rider/status')}
+                sx={{ 
+                  fontWeight: 'bold', 
+                  background: 'linear-gradient(135deg, #ff9800 0%, #ffb74d 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #f57c00 0%, #ff9800 100%)'
+                  }
+                }}
+              >
+                Check Registration Status
+              </Button>
+            </Box>
           </Box>
         </CardContent>
       </Card>

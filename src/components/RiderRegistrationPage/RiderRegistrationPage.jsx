@@ -68,6 +68,13 @@ const RiderRegistrationPage = () => {
   const handleFileChange = (field) => (e) => {
     const file = e.target.files[0]
     if (file) {
+      const maxSizeKB = 500
+      const fileSizeKB = file.size / 1024
+      if (file.type.startsWith('image/') && fileSizeKB > maxSizeKB) {
+        alert(`Image size is ${fileSizeKB.toFixed(0)}KB. Please upload a compressed image under ${maxSizeKB}KB.`)
+        e.target.value = ''
+        return
+      }
       setFormData(prev => ({ ...prev, [field]: file }))
       setUploadStatus(prev => ({ ...prev, [field]: `✓ ${file.name}` }))
     }
@@ -181,8 +188,16 @@ const RiderRegistrationPage = () => {
         timeout: 30000
       })
       
-      alert('Registration submitted successfully! Your application is under review. Please login to continue.')
-      navigate('/rider/login')
+      const checkStatus = window.confirm(
+        'Registration submitted successfully! Your application is under review.\n\n' +
+        'Click OK to check your status now, or Cancel to go to login page.'
+      )
+      
+      if (checkStatus) {
+        navigate('/rider/status')
+      } else {
+        navigate('/rider/login')
+      }
     } catch (error) {
       console.error('Error registering rider:', error)
       console.error('Error response:', error.response)
