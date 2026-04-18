@@ -11,7 +11,7 @@ const TrackParcel = () => {
   const [error, setError] = useState('')
   const [showLiveTracking, setShowLiveTracking] = useState(false)
 
-  const statusSteps = ['pending', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered']
+  const statusSteps = ['pending', 'picked_up', 'out_for_delivery', 'delivered']
 
   // Handle browser back button
   useEffect(() => {
@@ -60,10 +60,7 @@ const TrackParcel = () => {
       const parcel = data.data || data
       setParcelData(parcel)
       
-      // Show live tracking if status is out_for_delivery
-      if (parcel.parcel_status?.toLowerCase() === 'out_for_delivery') {
-        setShowLiveTracking(true)
-      }
+      // Don't auto-show live tracking, just show the details
     } catch (err) {
       console.error('Tracking error:', err)
       setError('Parcel not found. Please check your tracking code.')

@@ -85,13 +85,13 @@ const MerchantRegistrationPage = () => {
         formDataToSend.append('business_document', formData.business_document)
       }
       
-      const response = await axios.post('http://localhost:8000/api/merchant-registrations', formDataToSend, {
+      const response = await axios.post('http://127.0.0.1:8000/api/merchant-registrations', formDataToSend, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 30000
       })
       
       alert('Registration submitted successfully! Your application is under review.')
-      navigate('/merchant/login')
+      navigate('/login')
     } catch (error) {
       console.error('Error registering merchant:', error)
       

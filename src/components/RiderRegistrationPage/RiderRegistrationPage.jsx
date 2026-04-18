@@ -176,13 +176,13 @@ const RiderRegistrationPage = () => {
         console.log(`${key}:`, value)
       }
       
-      const response = await axios.post('http://localhost:8000/api/rider-registrations', formDataToSend, {
+      const response = await axios.post('http://127.0.0.1:8000/api/rider-registrations', formDataToSend, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 30000
       })
       
       alert('Registration submitted successfully! Your application is under review. Please login to continue.')
-      navigate('/rider/login')
+      navigate('/login')
     } catch (error) {
       console.error('Error registering rider:', error)
       console.error('Error response:', error.response)

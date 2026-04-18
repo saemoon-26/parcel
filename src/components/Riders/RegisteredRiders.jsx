@@ -28,28 +28,53 @@ const RegisteredRiders = () => {
   const [viewDialog, setViewDialog] = useState({ open: false, rider: null })
 
   useEffect(() => {
-    fetchRegistrations()
+    // Test backend connection first
+    axios.get('http://127.0.0.1:8000/api/test')
+      .then(response => {
+        console.log('Backend connection test successful:', response.data)
+        fetchRegistrations()
+      })
+      .catch(error => {
+        console.error('Backend connection test failed:', error)
+        alert('Backend server is not running or not accessible at http://127.0.0.1:8000\n\nPlease start the Laravel server with: php artisan serve')
+        setLoading(false)
+      })
   }, [])
 
   const fetchRegistrations = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/rider-registrations')
+      console.log('Fetching registrations from: http://127.0.0.1:8000/api/rider-registrations')
+      const response = await axios.get('http://127.0.0.1:8000/api/rider-registrations')
+      console.log('Response status:', response.status)
       const data = response.data
       console.log('Backend Response:', data)
+      console.log('Response data type:', typeof data)
+      console.log('Is array?', Array.isArray(data))
+      console.log('Has data property?', data.data)
       
       // Handle different response structures
       if (Array.isArray(data)) {
+        console.log('Setting registrations from array:', data.length)
         setRegistrations(data)
       } else if (data.data && Array.isArray(data.data)) {
+        console.log('Setting registrations from data.data:', data.data.length)
         setRegistrations(data.data)
       } else if (data.riders && Array.isArray(data.riders)) {
+        console.log('Setting registrations from data.riders:', data.riders.length)
         setRegistrations(data.riders)
       } else {
+        console.log('No valid data structure found, setting empty array')
         setRegistrations([])
       }
     } catch (error) {
       console.error('Error fetching registrations:', error)
-      alert('Unable to fetch registrations. Please check backend connection.')
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status,
+        data: error.response?.data
+      })
+      alert(`Unable to fetch registrations. Error: ${error.message}\n\nPlease check:\n1. Backend server is running on http://127.0.0.1:8000\n2. CORS is enabled\n3. Database connection is working`)
       setRegistrations([])
     } finally {
       setLoading(false)
@@ -60,7 +85,7 @@ const RegisteredRiders = () => {
     if (window.confirm('Are you sure you want to approve this rider?')) {
       try {
         console.log('Approving rider ID:', id)
-        const response = await axios.post(`http://localhost:8000/api/rider-registrations/${id}/approve`)
+        const response = await axios.post(`http://127.0.0.1:8000/api/rider-registrations/${id}/approve`)
         console.log('Approve response:', response.data)
         alert('Rider approved successfully!')
         fetchRegistrations()
@@ -76,7 +101,7 @@ const RegisteredRiders = () => {
     const reason = prompt('Enter rejection reason:')
     if (reason) {
       try {
-        await axios.post(`http://localhost:8000/api/rider-registrations/${id}/reject`, { 
+        await axios.post(`http://127.0.0.1:8000/api/rider-registrations/${id}/reject`, { 
           rejection_reason: reason 
         })
         alert('Rider rejected successfully!')

@@ -69,59 +69,102 @@
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
   margin-bottom: 30px;
 }
 
 .stat-card {
-  background: white;
-  padding: 25px;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   display: flex;
   align-items: center;
   gap: 20px;
-  transition: transform 0.3s, box-shadow 0.3s;
-  border-left: 4px solid #667eea;
+  transition: all 0.3s ease;
+  border-left: 5px solid #667eea;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(102, 126, 234, 0.1) 0%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(30%, -30%);
 }
 
 .stat-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  transform: translateY(-8px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.18);
 }
 
-.stat-card.primary { border-left-color: #667eea; }
-.stat-card.success { border-left-color: #28a745; }
-.stat-card.warning { border-left-color: #ffc107; }
-.stat-card.info { border-left-color: #17a2b8; }
-.stat-card.rider { border-left-color: #6f42c1; }
-.stat-card.merchant { border-left-color: #fd7e14; }
-.stat-card.revenue { border-left-color: #20c997; }
-.stat-card.pending { border-left-color: #dc3545; }
+.stat-card.primary { 
+  border-left-color: #667eea;
+  background: linear-gradient(135deg, #f0f2ff 0%, #ffffff 100%);
+}
+.stat-card.success { 
+  border-left-color: #28a745;
+  background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%);
+}
+.stat-card.warning { 
+  border-left-color: #ffc107;
+  background: linear-gradient(135deg, #fff8e1 0%, #ffffff 100%);
+}
+.stat-card.info { 
+  border-left-color: #17a2b8;
+  background: linear-gradient(135deg, #e0f7fa 0%, #ffffff 100%);
+}
+.stat-card.rider { 
+  border-left-color: #6f42c1;
+  background: linear-gradient(135deg, #f3e5f5 0%, #ffffff 100%);
+}
+.stat-card.merchant { 
+  border-left-color: #fd7e14;
+  background: linear-gradient(135deg, #fff3e0 0%, #ffffff 100%);
+}
+.stat-card.revenue { 
+  border-left-color: #20c997;
+  background: linear-gradient(135deg, #e0f2f1 0%, #ffffff 100%);
+}
+.stat-card.pending { 
+  border-left-color: #dc3545;
+  background: linear-gradient(135deg, #ffebee 0%, #ffffff 100%);
+}
 
 .stat-icon {
-  font-size: 3rem;
-  opacity: 0.8;
+  font-size: 3.5rem;
+  opacity: 0.9;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+  z-index: 1;
 }
 
 .stat-content {
   flex: 1;
+  z-index: 1;
 }
 
 .stat-card h3 {
-  margin: 0 0 10px 0;
-  color: #6c757d;
-  font-size: 0.9rem;
-  font-weight: 500;
+  margin: 0 0 12px 0;
+  color: #495057;
+  font-size: 0.95rem;
+  font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .stat-number {
   margin: 0;
-  font-size: 2rem;
-  font-weight: bold;
-  color: #2c3e50;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #212529;
+  line-height: 1;
 }
 
 .quick-stats {
