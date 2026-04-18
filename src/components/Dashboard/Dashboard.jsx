@@ -9,9 +9,10 @@ function Dashboard() {
     totalMerchants: 0,
     deliveredToday: 0,
     pendingParcels: 0,
-    inTransitParcels: 0,
     totalRevenue: 0,
-    pendingRiders: 0
+    deliveredParcels: 0,
+    outForDelivery: 0,
+    failedParcels: 0
   })
   const [loading, setLoading] = useState(true)
   const [autoRefresh, setAutoRefresh] = useState(true)
@@ -19,13 +20,14 @@ function Dashboard() {
   useEffect(() => {
     fetchDashboardData()
     
-    const interval = setInterval(() => {
-      if (autoRefresh) {
-        fetchDashboardData()
-      }
-    }, 5000)
-
-    return () => clearInterval(interval)
+    // Auto-refresh disabled - use manual refresh button
+    // Uncomment below to enable auto-refresh every 30 seconds
+    // const interval = setInterval(() => {
+    //   if (autoRefresh) {
+    //     fetchDashboardData()
+    //   }
+    // }, 30000)
+    // return () => clearInterval(interval)
   }, [autoRefresh])
 
   const fetchDashboardData = async () => {
@@ -45,13 +47,13 @@ function Dashboard() {
         p.parcel_status === 'delivered' && p.updated_at?.startsWith(today)
       ).length
 
-      const totalRevenue = parcels
-        .filter(p => p.parcel_status === 'delivered')
-        .reduce((sum, p) => {
-          const riderPayout = parseFloat(p.rider_payout) || 0
-          const companyPayout = parseFloat(p.company_payout) || 0
-          return sum + riderPayout + companyPayout
-        }, 0)
+      const deliveredParcels = parcels.filter(p => p.parcel_status === 'delivered')
+
+      const totalRevenue = deliveredParcels.reduce((sum, p) => {
+        const riderPayout = parseFloat(p.rider_payout) || 0
+        const companyPayout = parseFloat(p.company_payout) || 0
+        return sum + riderPayout + companyPayout
+      }, 0)
 
       setStats({
         totalParcels: parcels.length,
@@ -59,9 +61,10 @@ function Dashboard() {
         totalMerchants: merchants.length,
         deliveredToday,
         pendingParcels: parcels.filter(p => p.parcel_status === 'pending').length,
-        inTransitParcels: parcels.filter(p => p.parcel_status === 'in_transit').length,
         totalRevenue,
-        pendingRiders: riders.filter(r => r.status === 'pending').length
+        deliveredParcels: deliveredParcels.length,
+        outForDelivery: parcels.filter(p => p.parcel_status === 'out_for_delivery').length,
+        failedParcels: parcels.filter(p => p.parcel_status === 'failed' || p.parcel_status === 'cancelled').length
       })
 
       setLoading(false)
@@ -71,17 +74,7 @@ function Dashboard() {
     }
   }
 
-  const handleAutoAssign = async () => {
-    if (!window.confirm('Auto-assign pending parcels to available riders using AI?')) return
-    
-    try {
-      const response = await axios.post('http://localhost:8000/api/auto-assign-pending')
-      alert(`Success! ${response.data.assigned || 0} parcels assigned using ${response.data.algorithm}`)
-      fetchDashboardData()
-    } catch (error) {
-      alert('Error: ' + (error.response?.data?.message || error.message))
-    }
-  }
+
 
   const handleExportReport = () => {
     const report = `
@@ -91,12 +84,10 @@ Generated: ${new Date().toLocaleString()}
 STATISTICS:
 - Total Parcels: ${stats.totalParcels}
 - Delivered Today: ${stats.deliveredToday}
-- In Transit: ${stats.inTransitParcels}
 - Pending: ${stats.pendingParcels}
 - Active Riders: ${stats.activeRiders}
 - Total Merchants: ${stats.totalMerchants}
 - Total Revenue: Rs. ${stats.totalRevenue.toLocaleString()}
-- Pending Riders: ${stats.pendingRiders}
 
 TOP PERFORMERS:
 ${topRiders.map((r, i) => `${i+1}. ${r.name} - ${r.deliveries} deliveries - Rs. ${r.earnings.toFixed(0)}`).join('\n')}
@@ -122,11 +113,7 @@ ${topRiders.map((r, i) => `${i+1}. ${r.name} - ${r.deliveries} deliveries - Rs. 
   return (
     <div className="dashboard">
       <div className="dashboard-header">
-        <div className="refresh-controls">
-          <button className="ai-assign-btn" onClick={handleAutoAssign}>
-            🤖 AI Auto-Assign Parcels
-          </button>
-        </div>
+        
       </div>
 
       <div className="stats-grid">
@@ -141,16 +128,8 @@ ${topRiders.map((r, i) => `${i+1}. ${r.name} - ${r.deliveries} deliveries - Rs. 
         <div className="stat-card success">
           <div className="stat-icon">✅</div>
           <div className="stat-content">
-            <h3>Delivered Today</h3>
-            <p className="stat-number">{stats.deliveredToday}</p>
-          </div>
-        </div>
-        
-        <div className="stat-card warning">
-          <div className="stat-icon">🚚</div>
-          <div className="stat-content">
-            <h3>In Transit</h3>
-            <p className="stat-number">{stats.inTransitParcels}</p>
+            <h3>Delivered Parcels</h3>
+            <p className="stat-number">{stats.deliveredParcels}</p>
           </div>
         </div>
         
@@ -161,7 +140,7 @@ ${topRiders.map((r, i) => `${i+1}. ${r.name} - ${r.deliveries} deliveries - Rs. 
             <p className="stat-number">{stats.pendingParcels}</p>
           </div>
         </div>
-        
+
         <div className="stat-card rider">
           <div className="stat-icon">🚴</div>
           <div className="stat-content">
@@ -185,12 +164,28 @@ ${topRiders.map((r, i) => `${i+1}. ${r.name} - ${r.deliveries} deliveries - Rs. 
             <p className="stat-number">Rs. {stats.totalRevenue.toLocaleString()}</p>
           </div>
         </div>
-        
-        <div className="stat-card pending">
-          <div className="stat-icon">👤</div>
+
+        <div className="stat-card today">
+          <div className="stat-icon">📅</div>
           <div className="stat-content">
-            <h3>Pending Riders</h3>
-            <p className="stat-number">{stats.pendingRiders}</p>
+            <h3>Delivered Today</h3>
+            <p className="stat-number">{stats.deliveredToday}</p>
+          </div>
+        </div>
+
+        <div className="stat-card warning">
+          <div className="stat-icon">🚚</div>
+          <div className="stat-content">
+            <h3>Out for Delivery</h3>
+            <p className="stat-number">{stats.outForDelivery}</p>
+          </div>
+        </div>
+
+        <div className="stat-card danger">
+          <div className="stat-icon">❌</div>
+          <div className="stat-content">
+            <h3>Failed/Cancelled</h3>
+            <p className="stat-number">{stats.failedParcels}</p>
           </div>
         </div>
       </div>

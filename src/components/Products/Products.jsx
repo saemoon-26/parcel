@@ -23,7 +23,7 @@ const Products = () => {
   const [verifyMessage, setVerifyMessage] = useState({ type: '', text: '' })
   const verificationInputRef = useRef(null)
   
-  const statusOptions = ['pending', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered']
+  const statusOptions = ['pending', 'picked_up', 'out_for_delivery', 'delivered']
   const cities = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala', 'Hyderabad', 'Sukkur']
   const [formData, setFormData] = useState({
     tracking_code: '',
@@ -70,7 +70,18 @@ const Products = () => {
   const fetchMerchants = useCallback(async () => {
     try {
       const response = await axios.get("http://127.0.0.1:8000/api/merchants", { timeout: 10000 })
-      setMerchants(response.data?.data || [])
+      const allMerchants = response.data?.data || []
+      
+      // Filter only approved merchants
+      const approvedMerchants = allMerchants.filter(merchant => {
+        // Check if merchant company is approved
+        return merchant.company?.approval_status === 'approved'
+      })
+      
+      console.log('Total merchants:', allMerchants.length)
+      console.log('Approved merchants:', approvedMerchants.length)
+      
+      setMerchants(approvedMerchants)
     } catch (error) {
       console.error('Error fetching merchants:', error.message)
       setMerchants([])
@@ -232,15 +243,28 @@ const Products = () => {
       alert('Merchant is required')
       return
     }
+    
+    // Validate email if provided
+    if (formData.client_email && formData.client_email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(formData.client_email)) {
+        alert('Please enter a valid email address')
+        return
+      }
+    }
+    
     try {
       const dataToSend = {
         ...formData,
         merchant_id: selectedMerchant.id,
         assigned_to: formData.assigned_to || null,
-        parcel_status: formData.parcel_status.replace(/ /g, '_')
+        parcel_status: formData.parcel_status.replace(/ /g, '_'),
+        client_email: formData.client_email.trim() || null // Ensure email is sent
       }
       console.log('Sending data with merchant_id:', dataToSend)
-      const response = await axios.post('http://127.0.0.1:8000/api/parcels', dataToSend, { timeout: 10000 })
+      console.log('Client email being sent:', dataToSend.client_email)
+      
+      const response = await axios.post('http://127.0.0.1:8000/api/parcels', dataToSend, { timeout: 30000 })
       const data = response.data
       const parcelId = data?.data?.parcel_id || data?.parcel_id
       
@@ -249,7 +273,8 @@ const Products = () => {
       // Show AI assignment result
       const assignedRider = data.assigned_rider_name || 'N/A'
       const aiStatus = data.ai_assignment === 'success' ? '✅ AI assigned rider' : '⚠️ No rider available in city'
-      alert(`✅ Parcel added successfully!\n\nTracking: ${data.tracking_code}\nAssigned to: ${assignedRider}\n${aiStatus}`)
+      const emailStatus = data.email_sent ? '\n📧 Email sent to client' : ''
+      alert(`✅ Parcel added successfully!\n\nTracking: ${data.tracking_code}\nAssigned to: ${assignedRider}\n${aiStatus}${emailStatus}`)
       
       // Reset form
       setFormData({
@@ -279,13 +304,17 @@ const Products = () => {
             tracking_code: response.data.tracking_code
           }))
         })
+        .catch(err => console.log('Tracking code generation failed:', err))
       
+      // Refresh parcels list
       await fetchParcels()
+      
     } catch (error) {
+      console.error('Submit error:', error)
       const errorMessages = error.response?.data?.errors 
         ? Object.values(error.response.data.errors).flat().join(', ')
-        : error.response?.data?.message || 'Error adding parcel'
-      alert(`Error: ${errorMessages}`)
+        : error.response?.data?.message || error.message || 'Error adding parcel'
+      alert(`❌ Error: ${errorMessages}`)
     }
   }, [formData, selectedMerchant, fetchParcels])
 
@@ -425,7 +454,7 @@ const Products = () => {
   const getStatusColor = useCallback((status) => {
     switch(status) {
       case 'delivered': return 'success'
-      case 'in_transit': return 'warning'
+      case 'out_for_delivery': return 'warning'
       case 'pending': return 'error'
       case 'pickup_requested': return 'info'
       case 'picked_up': return 'secondary'
@@ -554,7 +583,8 @@ const Products = () => {
       <Dialog open={open} onClose={handleCloseDialog} maxWidth="md" fullWidth>
         <DialogTitle>
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            Select Merchant
+            <Typography variant="h6">Select Merchant</Typography>
+            <Chip label={`${merchants.length} Approved`} color="success" size="small" />
           </Box>
         </DialogTitle>
         <DialogContent>
@@ -569,16 +599,29 @@ const Products = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {merchants.map((merchant) => (
-                  <TableRow key={merchant.id}>
-                    <TableCell>{merchant.id}</TableCell>
-                    <TableCell>{merchant.first_name} {merchant.last_name}</TableCell>
-                    <TableCell>{merchant.company?.company_name || 'N/A'}</TableCell>
-                    <TableCell>
-                      <Button variant="contained" size="small" onClick={() => handleMerchantSelect(merchant)}>Select</Button>
+                {merchants.length > 0 ? (
+                  merchants.map((merchant) => (
+                    <TableRow key={merchant.id}>
+                      <TableCell>{merchant.id}</TableCell>
+                      <TableCell>{merchant.first_name} {merchant.last_name}</TableCell>
+                      <TableCell>{merchant.company?.company_name || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Button variant="contained" size="small" onClick={() => handleMerchantSelect(merchant)}>Select</Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} style={{textAlign: 'center', padding: '40px'}}>
+                      <Typography variant="h6" color="text.secondary" gutterBottom>
+                        ⚠️ No Approved Merchants Available
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Please wait for admin to approve merchant registrations.
+                      </Typography>
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </TableContainer>

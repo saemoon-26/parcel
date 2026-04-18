@@ -39,7 +39,7 @@ const RiderDashboard = () => {
   useEffect(() => {
     const storedRiderData = localStorage.getItem('riderData')
     if (!storedRiderData) {
-      navigate('/rider/login')
+      navigate('/login')
       return
     }
     const rider = JSON.parse(storedRiderData)
@@ -51,11 +51,12 @@ const RiderDashboard = () => {
       loadParcels(userId)
       setLoading(false)
       
-      const interval = setInterval(() => {
-        loadParcels(userId)
-      }, 10000)
-      
-      return () => clearInterval(interval)
+      // Auto-refresh disabled - use manual refresh button
+      // Uncomment below to enable auto-refresh every 30 seconds
+      // const interval = setInterval(() => {
+      //   loadParcels(userId)
+      // }, 30000)
+      // return () => clearInterval(interval)
     } else {
       console.error('No user ID found in:', rider)
       setLoading(false)
@@ -216,7 +217,7 @@ const RiderDashboard = () => {
   const handleLogout = () => {
     localStorage.removeItem('riderToken')
     localStorage.removeItem('riderData')
-    navigate('/rider/login')
+    navigate('/', { replace: true })
   }
 
   const getFilteredParcels = () => {
@@ -277,6 +278,20 @@ const RiderDashboard = () => {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => navigate('/rider/requests')} className="requests-btn" style={{
+            background: 'linear-gradient(135deg, #667eea, #764ba2)',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            📦 Pending Requests
+          </button>
           <button onClick={() => {
             const userId = riderData.user_id || riderData.address?.user_id || riderData.id
             if (userId) loadParcels(userId)
@@ -286,11 +301,11 @@ const RiderDashboard = () => {
       </div>
 
       <div className="stats-grid">
-        <div className="stat-card total">
+        <div className="stat-card total" onClick={() => navigate('/rider/requests')} style={{ cursor: 'pointer' }}>
           <div className="stat-icon">📦</div>
           <div className="stat-info">
-            <h3>{stats.total}</h3>
-            <p>Total Parcels</p>
+            <h3>New</h3>
+            <p>Pending Requests</p>
           </div>
         </div>
         <div className="stat-card pending">

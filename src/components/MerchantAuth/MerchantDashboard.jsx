@@ -17,7 +17,7 @@ const MerchantDashboard = () => {
   useEffect(() => {
     const data = localStorage.getItem('merchantData')
     if (!data) {
-      navigate('/merchant/login')
+      navigate('/login')
       return
     }
     const merchant = JSON.parse(data)
@@ -69,7 +69,7 @@ const MerchantDashboard = () => {
   const handleLogout = () => {
     localStorage.removeItem('merchantToken')
     localStorage.removeItem('merchantData')
-    navigate('/merchant/login')
+    navigate('/', { replace: true })
   }
 
   const handleParcelCreated = () => {

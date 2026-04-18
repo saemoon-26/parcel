@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Box, Card, CardContent, Typography, Button, Container } from '@mui/material'
 import { DirectionsBike, Business, LocalShipping } from '@mui/icons-material'
 
-const WelcomePage = () => {
+const RegisterPage = () => {
   const navigate = useNavigate()
 
   return (
@@ -162,7 +162,7 @@ const WelcomePage = () => {
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
               <Button 
                 variant="outlined" 
-                onClick={() => navigate('/rider/login')} 
+                onClick={() => navigate('/login')} 
                 sx={{ 
                   flex: 1,
                   py: 1.2,
@@ -175,24 +175,7 @@ const WelcomePage = () => {
                   }
                 }}
               >
-                Rider Login
-              </Button>
-              <Button 
-                variant="outlined" 
-                onClick={() => navigate('/merchant/login')} 
-                sx={{ 
-                  flex: 1,
-                  py: 1.2,
-                  borderColor: '#f5576c', 
-                  color: '#f5576c',
-                  fontWeight: 600,
-                  '&:hover': { 
-                    borderColor: '#e4465b',
-                    background: 'rgba(245, 87, 108, 0.05)'
-                  }
-                }}
-              >
-                Merchant Login
+                Login
               </Button>
             </Box>
           </CardContent>
@@ -229,4 +212,4 @@ const WelcomePage = () => {
   )
 }
 
-export default WelcomePage
+export default RegisterPage
