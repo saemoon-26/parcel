@@ -1,19 +1,39 @@
-import { useState, useRef } from 'react'
-import { TextField, Button, Box, Typography, Paper, Grid, FormControl, InputLabel, Select, MenuItem, Card, CardContent, Stepper, Step, StepLabel, Avatar, Divider } from '@mui/material'
-import { CloudUpload, Person, DirectionsCar, Description, AccountBalance, LocationOn } from '@mui/icons-material'
+import { useState, useRef, useEffect, memo, useMemo } from 'react'
+import { TextField, Button, Box, Typography, Paper, Grid, FormControl, InputLabel, Select, MenuItem, Card, CardContent, Stepper, Step, StepLabel, Avatar, Divider, IconButton, InputAdornment } from '@mui/material'
+import { CloudUpload, Person, DirectionsCar, Description, AccountBalance, LocationOn, Visibility, VisibilityOff } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+
+// Import images
+import img1 from '../../images/WhatsApp Image 2026-04-22 at 12.15.09 AM.jpeg'
+import img2 from '../../images/WhatsApp Image 2026-04-22 at 12.15.32 AM.jpeg'
+import img3 from '../../images/WhatsApp Image 2026-04-22 at 12.15.49 AM.jpeg'
+import img4 from '../../images/WhatsApp Image 2026-04-22 at 12.19.12 AM.jpeg'
+import img5 from '../../images/WhatsApp Image 2026-04-22 at 12.20.16 AM.jpeg'
+import img6 from '../../images/WhatsApp Image 2026-04-22 at 12.20.28 AM.jpeg'
+import img7 from '../../images/WhatsApp Image 2026-04-22 at 12.20.55 AM.jpeg'
+import img8 from '../../images/WhatsApp Image 2026-04-22 at 12.21.45 AM.jpeg'
+import img9 from '../../images/WhatsApp Image 2026-04-22 at 12.39.09 AM.jpeg'
+import img10 from '../../images/WhatsApp Image 2026-04-22 at 12.39.20 AM.jpeg'
+import img11 from '../../images/WhatsApp Image 2026-04-22 at 12.39.34 AM.jpeg'
+import img12 from '../../images/WhatsApp Image 2026-04-22 at 12.39.49 AM.jpeg'
+import img13 from '../../images/WhatsApp Image 2026-04-22 at 12.40.38 AM.jpeg'
 
 const VEHICLE_TYPES = ['Bike', 'Car', 'Van']
 const VEHICLE_BRANDS = ['Honda', 'Suzuki', 'Toyota', 'Yamaha', 'KTM', 'United', 'Changan', 'Hyundai', 'Kia', 'Daihatsu']
 const CITIES = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala']
 const STATES = ['Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan', 'Gilgit-Baltistan', 'Azad Kashmir', 'Islamabad Capital Territory']
+const COUNTRIES = ['Pakistan', 'India', 'Bangladesh', 'Afghanistan', 'United States', 'United Kingdom', 'Canada', 'Australia', 'UAE', 'Saudi Arabia']
 const BANKS = ['HBL', 'UBL', 'MCB', 'Allied Bank', 'Bank Alfalah', 'Meezan Bank', 'Faysal Bank', 'Askari Bank', 'Standard Chartered', 'Bank Al Habib', 'Soneri Bank', 'Silk Bank', 'JS Bank', 'Dubai Islamic Bank', 'Samba Bank']
+
+const SLIDER_IMAGES = [img1, img2, img3, img4, img5, img6, img7, img8, img9, img10, img11, img12, img13]
 
 const RiderRegistrationPage = () => {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [uploadStatus, setUploadStatus] = useState({})
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     full_name: '',
     father_name: '',
@@ -39,34 +59,70 @@ const RiderRegistrationPage = () => {
     account_number: '',
     account_title: '',
     city: '',
-    state: ''
+    state: '',
+    country: '',
+    zipcode: ''
   })
+
+  // Auto slide effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % SLIDER_IMAGES.length)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleFieldChange = (field) => (e) => {
     let value = e.target.value
 
-    // Auto-format CNIC
+    // Validate name fields - only letters and spaces
+    if (field === 'full_name' || field === 'father_name' || field === 'account_title') {
+      if (value && !/^[a-zA-Z\s]*$/.test(value)) {
+        alert('⚠️ Only alphabets and spaces are allowed in name fields')
+        return
+      }
+    }
+
+    // Auto-format CNIC - exactly 13 digits
     if (field === 'cnic_number') {
-      value = value.replace(/\D/g, '').slice(0, 13)
-      if (value.length > 5) value = value.slice(0, 5) + '-' + value.slice(5)
-      if (value.length > 13) value = value.slice(0, 13) + '-' + value.slice(13)
+      const digits = value.replace(/\D/g, '')
+      if (digits.length <= 13) {
+        value = digits
+        if (digits.length > 5) value = digits.slice(0, 5) + '-' + digits.slice(5)
+        if (digits.length > 12) value = value.slice(0, 13) + '-' + digits.slice(12)
+      } else {
+        return
+      }
     }
 
-    // Auto-format mobile numbers
+    // Auto-format mobile numbers - exactly 11 digits
     if (field === 'mobile_primary' || field === 'mobile_alternate') {
-      value = value.replace(/\D/g, '').slice(0, 11)
+      const digits = value.replace(/\D/g, '')
+      if (digits.length > 11) {
+        alert('⚠️ Mobile number must be exactly 11 digits')
+        return
+      }
+      value = digits
     }
 
-    // Format account number
+    // Format account number - only digits
     if (field === 'account_number') {
-      value = value.replace(/\D/g, '')
+      if (value && !/^\d*$/.test(value)) {
+        alert('⚠️ Only numbers are allowed in account number')
+        return
+      }
+    }
+
+    // Format zipcode - only digits
+    if (field === 'zipcode') {
+      value = value.replace(/\D/g, '').slice(0, 6)
     }
 
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
   const handleFileChange = (field) => (e) => {
-    const file = e.target.files[0]
+    const file = e.target.files?.[0]
     if (file) {
       setFormData(prev => ({ ...prev, [field]: file }))
       setUploadStatus(prev => ({ ...prev, [field]: `✓ ${file.name}` }))
@@ -74,67 +130,42 @@ const RiderRegistrationPage = () => {
   }
 
   const handleSubmit = async () => {
-    const requiredFields = {
-      full_name: 'Full Name',
-      father_name: 'Father/Guardian Name',
-      cnic_number: 'CNIC Number',
-      mobile_primary: 'Primary Mobile',
-      email: 'Email',
-      password: 'Password',
-      address: 'Address',
-      vehicle_type: 'Vehicle Type',
-      vehicle_brand: 'Vehicle Brand',
-      vehicle_registration: 'Vehicle Registration',
-      driving_license_number: 'Driving License Number',
-      city: 'City',
-      state: 'State'
-    }
+    // Quick validation
+    if (!formData.full_name?.trim()) return alert('❌ Full Name required!')
+    if (!/^[a-zA-Z\s]+$/.test(formData.full_name)) return alert('⚠️ Full name: only alphabets and spaces allowed!')
+    if (!formData.father_name?.trim()) return alert('❌ Father Name required!')
+    if (!/^[a-zA-Z\s]+$/.test(formData.father_name)) return alert('⚠️ Father name: only alphabets and spaces allowed!')
     
-    const missingFields = []
-    Object.keys(requiredFields).forEach(field => {
-      if (!formData[field] || formData[field].toString().trim() === '') {
-        missingFields.push(requiredFields[field])
-      }
-    })
+    // Validate CNIC - exactly 13 digits
+    if (!formData.cnic_number?.trim()) return alert('❌ CNIC required!')
+    const cnicDigits = formData.cnic_number.replace(/\D/g, '')
+    if (cnicDigits.length !== 13) return alert('⚠️ CNIC must be exactly 13 digits (e.g., 12345-1234567-1)')
     
-    if (missingFields.length > 0) {
-      alert(`Please fill in the following required fields: ${missingFields.join(', ')}`)
-      return
-    }
-
-    // Validate CNIC format
-    if (!/^\d{5}-\d{7}-\d$/.test(formData.cnic_number)) {
-      alert('CNIC must be in correct format: 12345-1234567-1')
-      return
-    }
-
-    // Validate mobile numbers
-    if (!/^03\d{9}$/.test(formData.mobile_primary)) {
-      alert('Primary mobile must be 11 digits starting with 03')
-      return
-    }
-
+    if (!formData.mobile_primary?.trim()) return alert('❌ Mobile required!')
+    if (!/^03\d{9}$/.test(formData.mobile_primary)) return alert('⚠️ Mobile: 11 digits, start with 03!')
+    
     if (formData.mobile_alternate && !/^03\d{9}$/.test(formData.mobile_alternate)) {
-      alert('Alternate mobile must be 11 digits starting with 03')
-      return
+      return alert('⚠️ Alternate mobile: 11 digits, start with 03!')
     }
-
-    // Validate email
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      alert('Please enter a valid email address')
-      return
-    }
-
-    // Validate password
-    if (formData.password.length < 6) {
-      alert('Password must be at least 6 characters long')
-      return
-    }
-
-    // Validate name
-    if (!/^[a-zA-Z\s]+$/.test(formData.full_name)) {
-      alert('Full name should contain only letters')
-      return
+    
+    if (!formData.email?.trim()) return alert('❌ Email required!')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return alert('⚠️ Invalid email format!')
+    if (!formData.password?.trim()) return alert('❌ Password required!')
+    if (formData.password.length < 6) return alert('⚠️ Password: minimum 6 characters!')
+    if (!formData.address?.trim()) return alert('❌ Address required!')
+    if (!formData.vehicle_type) return alert('❌ Vehicle Type required!')
+    if (!formData.vehicle_brand) return alert('❌ Vehicle Brand required!')
+    if (!formData.vehicle_registration?.trim()) return alert('❌ Vehicle Registration required!')
+    if (!formData.driving_license_number?.trim()) return alert('❌ Driving License required!')
+    if (!formData.city) return alert('❌ City required!')
+    if (!formData.state) return alert('❌ State required!')
+    if (!formData.country) return alert('❌ Country required!')
+    if (!formData.zipcode?.trim()) return alert('❌ Zipcode required!')
+    if (!/^\d{4,6}$/.test(formData.zipcode)) return alert('⚠️ Zipcode: 4-6 digits only!')
+    
+    // Validate account title if provided
+    if (formData.account_title && !/^[a-zA-Z\s]+$/.test(formData.account_title)) {
+      return alert('⚠️ Account title: only alphabets and spaces allowed!')
     }
     
     setLoading(true)
@@ -157,6 +188,8 @@ const RiderRegistrationPage = () => {
       formDataToSend.append('driving_license_number', formData.driving_license_number)
       formDataToSend.append('city', formData.city)
       formDataToSend.append('state', formData.state)
+      formDataToSend.append('country', formData.country)
+      formDataToSend.append('zipcode', formData.zipcode)
       formDataToSend.append('bank_name', formData.bank_name || '')
       formDataToSend.append('account_number', formData.account_number || '')
       formDataToSend.append('account_title', formData.account_title || '')
@@ -170,10 +203,10 @@ const RiderRegistrationPage = () => {
       if (formData.driving_license_image) formDataToSend.append('driving_license_image', formData.driving_license_image)
       if (formData.electricity_bill) formDataToSend.append('electricity_bill', formData.electricity_bill)
       
-      console.log('Sending to API...')
-      console.log('FormData contents:')
+
+
       for (let [key, value] of formDataToSend.entries()) {
-        console.log(`${key}:`, value)
+
       }
       
       const response = await axios.post('http://127.0.0.1:8000/api/rider-registrations', formDataToSend, {
@@ -184,8 +217,8 @@ const RiderRegistrationPage = () => {
       alert('Registration submitted successfully! Your application is under review. Please login to continue.')
       navigate('/login')
     } catch (error) {
-      console.error('Error registering rider:', error)
-      console.error('Error response:', error.response)
+      
+      
       
       // Show detailed validation errors
       if (error.response?.status === 422 && error.response?.data?.errors) {
@@ -204,44 +237,136 @@ const RiderRegistrationPage = () => {
     }
   }
 
+  const backgroundStyle = useMemo(() => ({
+    minHeight: '100vh',
+    position: 'relative',
+    overflow: 'hidden',
+    background: 'linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #4facfe)',
+    backgroundSize: '400% 400%',
+    animation: 'gradientShift 15s ease infinite',
+    py: 4,
+    '@keyframes gradientShift': {
+      '0%': { backgroundPosition: '0% 50%' },
+      '50%': { backgroundPosition: '100% 50%' },
+      '100%': { backgroundPosition: '0% 50%' }
+    }
+  }), [])
+
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      py: 4
-    }}>
+    <Box sx={backgroundStyle}>
+
       <Box sx={{ maxWidth: 1200, mx: 'auto', px: 3 }}>
         <Paper elevation={10} sx={{ 
           p: 4, 
           mb: 4, 
           borderRadius: 3,
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          position: 'relative',
+          overflow: 'hidden',
+          zIndex: 1,
+          minHeight: '400px'
         }}>
-          <Box sx={{ textAlign: 'center', mb: 3 }}>
+          {/* Image Slider Background */}
+          <Box sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 0
+          }}>
+            {SLIDER_IMAGES.map((img, index) => (
+              <Box
+                key={index}
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundImage: `url(${img})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  opacity: currentSlide === index ? 1 : 0,
+                  transition: 'opacity 1.5s ease-in-out',
+                  filter: 'brightness(0.5)',
+                  transform: 'scale(1.2)',
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.6) 0%, rgba(118, 75, 162, 0.6) 100%)'
+                  }
+                }}
+              />
+            ))}
+          </Box>
+
+
+          {/* Slide Indicators */}
+          <Box sx={{
+            position: 'absolute',
+            bottom: 20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            gap: 1,
+            zIndex: 3
+          }}>
+            {SLIDER_IMAGES.map((_, index) => (
+              <Box
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                sx={{
+                  width: currentSlide === index ? 30 : 10,
+                  height: 10,
+                  borderRadius: 5,
+                  background: currentSlide === index 
+                    ? 'linear-gradient(135deg, #fff 0%, #f0f0f0 100%)' 
+                    : 'rgba(255, 255, 255, 0.5)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: currentSlide === index ? '0 0 20px rgba(255, 255, 255, 0.8)' : 'none',
+                  '&:hover': {
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    transform: 'scale(1.2)'
+                  }
+                }}
+              />
+            ))}
+          </Box>
+          <Box sx={{ textAlign: 'center', mb: 3, position: 'relative', zIndex: 2 }}>
             <Avatar sx={{ 
-              width: 80, 
-              height: 80, 
+              width: 90, 
+              height: 90, 
               mx: 'auto', 
               mb: 2,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+              background: 'linear-gradient(135deg, #fff 0%, #f0f0f0 100%)',
+              boxShadow: '0 15px 50px rgba(255, 255, 255, 0.6)',
+              fontSize: '3rem'
             }}>
               🚴
             </Avatar>
             <Typography variant="h3" gutterBottom sx={{ 
               fontWeight: 'bold',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
+              color: '#fff',
+              textShadow: '0 0 40px rgba(255, 255, 255, 0.8), 0 0 80px rgba(102, 126, 234, 0.6)'
             }}>
               Rider Registration
             </Typography>
-            <Typography variant="h6" color="text.secondary">
-              Join our delivery team and start earning today!
+            <Typography variant="h6" sx={{ 
+              color: '#fff',
+              textShadow: '0 2px 20px rgba(0, 0, 0, 0.5)',
+              fontWeight: 500
+            }}>
+              Join our delivery team and start earning today! 🚀💰
             </Typography>
           </Box>
           
-          <Stepper alternativeLabel sx={{ mb: 3 }}>
+          <Stepper alternativeLabel sx={{ mb: 3, position: 'relative', zIndex: 1 }}>
             {['Personal Info', 'Vehicle Details', 'Documents', 'Bank & Location'].map((label) => (
               <Step key={label} active>
                 <StepLabel>{label}</StepLabel>
@@ -250,13 +375,25 @@ const RiderRegistrationPage = () => {
           </Stepper>
         </Paper>
 
-        <Grid container spacing={3}>
+        <Paper elevation={10} sx={{ 
+          p: 4, 
+          borderRadius: 3,
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+          position: 'relative',
+          zIndex: 1
+        }}>
+          <Grid container spacing={3}>
           <Grid size={{ xs: 12, md: 6 }}>
             <Card elevation={8} sx={{ 
               height: '100%',
               borderRadius: 3,
               background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-              border: '1px solid #e3f2fd'
+              border: '1px solid #e3f2fd',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 12px 24px rgba(33, 150, 243, 0.3)'
+              }
             }}>
               <CardContent sx={{ p: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -281,6 +418,7 @@ const RiderRegistrationPage = () => {
                       fullWidth
                       variant="outlined"
                       sx={{ mb: 2 }}
+                      helperText="Only letters and spaces allowed"
                     />
                   </Grid>
                   <Grid size={12}>
@@ -291,6 +429,7 @@ const RiderRegistrationPage = () => {
                       fullWidth
                       variant="outlined"
                       sx={{ mb: 2 }}
+                      helperText="Only letters and spaces allowed"
                     />
                   </Grid>
                   <Grid size={12}>
@@ -302,6 +441,7 @@ const RiderRegistrationPage = () => {
                       fullWidth
                       variant="outlined"
                       sx={{ mb: 2 }}
+                      helperText="Exactly 13 digits required"
                     />
                   </Grid>
                   <Grid size={12}>
@@ -313,6 +453,7 @@ const RiderRegistrationPage = () => {
                       fullWidth
                       variant="outlined"
                       sx={{ mb: 2 }}
+                      helperText="11 digits starting with 03"
                     />
                   </Grid>
                   <Grid size={12}>
@@ -324,6 +465,7 @@ const RiderRegistrationPage = () => {
                       fullWidth
                       variant="outlined"
                       sx={{ mb: 2 }}
+                      helperText="11 digits starting with 03"
                     />
                   </Grid>
                   <Grid size={12}>
@@ -340,14 +482,26 @@ const RiderRegistrationPage = () => {
                   <Grid size={12}>
                     <TextField
                       label="Password *"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       placeholder="Create a strong password"
                       value={formData.password}
                       onChange={handleFieldChange('password')}
                       fullWidth
                       variant="outlined"
                       sx={{ mb: 2 }}
-                      helperText="Password will be used for login after approval"
+                      helperText="Minimum 6 characters required"
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              onClick={() => setShowPassword(!showPassword)}
+                              edge="end"
+                            >
+                              {showPassword ? <VisibilityOff /> : <Visibility />}
+                            </IconButton>
+                          </InputAdornment>
+                        )
+                      }}
                     />
                   </Grid>
                   <Grid size={12}>
@@ -394,7 +548,12 @@ const RiderRegistrationPage = () => {
               height: '100%',
               borderRadius: 3,
               background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-              border: '1px solid #e8f5e8'
+              border: '1px solid #e8f5e8',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 12px 24px rgba(76, 175, 80, 0.3)'
+              }
             }}>
               <CardContent sx={{ p: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -522,7 +681,12 @@ const RiderRegistrationPage = () => {
               height: '100%',
               borderRadius: 3,
               background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-              border: '1px solid #f3e5f5'
+              border: '1px solid #f3e5f5',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 12px 24px rgba(156, 39, 176, 0.3)'
+              }
             }}>
               <CardContent sx={{ p: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -559,6 +723,7 @@ const RiderRegistrationPage = () => {
                       fullWidth
                       variant="outlined"
                       sx={{ mb: 2 }}
+                      helperText="Only digits allowed"
                     />
                   </Grid>
                   <Grid size={12}>
@@ -569,6 +734,7 @@ const RiderRegistrationPage = () => {
                       fullWidth
                       variant="outlined"
                       sx={{ mb: 3 }}
+                      helperText="Only letters and spaces allowed"
                     />
                   </Grid>
                   
@@ -585,7 +751,7 @@ const RiderRegistrationPage = () => {
                     </FormControl>
                   </Grid>
                   <Grid size={12}>
-                    <FormControl fullWidth>
+                    <FormControl fullWidth sx={{ mb: 2 }}>
                       <InputLabel>State *</InputLabel>
                       <Select 
                         value={formData.state}
@@ -595,6 +761,29 @@ const RiderRegistrationPage = () => {
                         {STATES.map(state => <MenuItem key={state} value={state}>{state}</MenuItem>)}
                       </Select>
                     </FormControl>
+                  </Grid>
+                  <Grid size={12}>
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                      <InputLabel>Country *</InputLabel>
+                      <Select 
+                        value={formData.country}
+                        onChange={handleFieldChange('country')} 
+                        label="Country *"
+                      >
+                        {COUNTRIES.map(country => <MenuItem key={country} value={country}>{country}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid size={12}>
+                    <TextField
+                      label="Zipcode *"
+                      placeholder="38000"
+                      value={formData.zipcode}
+                      onChange={handleFieldChange('zipcode')}
+                      fullWidth
+                      variant="outlined"
+                      helperText="4-6 digits only"
+                    />
                   </Grid>
                 </Grid>
               </CardContent>
@@ -606,7 +795,12 @@ const RiderRegistrationPage = () => {
               height: '100%',
               borderRadius: 3,
               background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-              border: '1px solid #fff3e0'
+              border: '1px solid #fff3e0',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 12px 24px rgba(255, 152, 0, 0.3)'
+              }
             }}>
               <CardContent sx={{ p: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -721,31 +915,32 @@ const RiderRegistrationPage = () => {
           </Grid>
         </Grid>
 
-        <Paper elevation={10} sx={{ 
-          mt: 4, 
-          p: 4, 
-          textAlign: 'center',
-          borderRadius: 3,
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
-        }}>
+        <Box sx={{ mt: 4, textAlign: 'center' }}>
           <Button 
             onClick={handleSubmit} 
             variant="contained" 
             size="large"
             disabled={loading}
             sx={{ 
-              px: 8, 
-              py: 2,
+              px: 10, 
+              py: 2.5,
               fontSize: '1.2rem',
+              fontWeight: 'bold',
               borderRadius: 3,
+              boxShadow: '0 8px 20px rgba(102, 126, 234, 0.4)',
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               '&:hover': {
-                background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)'
-              }
+                background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                boxShadow: '0 12px 28px rgba(102, 126, 234, 0.5)',
+                transform: 'translateY(-2px)'
+              },
+              transition: 'all 0.3s ease'
             }}
           >
             {loading ? 'Submitting Registration...' : '🚀 Submit Registration'}
           </Button>
+        </Box>
+
         </Paper>
       </Box>
     </Box>

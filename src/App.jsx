@@ -8,6 +8,7 @@ import Merchants from './components/Merchants/Merchants'
 import Settings from './components/Settings/Settings'
 import TrackParcel from './components/TrackParcel/TrackParcel'
 import RiderDashboard from './components/RiderDashboard/RiderDashboard'
+import RiderProfile from './components/RiderDashboard/RiderProfile'
 import RiderRegistrationPage from './components/RiderRegistrationPage/RiderRegistrationPage'
 import MerchantRegistrationPage from './components/MerchantRegistrationPage/MerchantRegistrationPage'
 import MerchantDashboard from './components/MerchantAuth/MerchantDashboard'
@@ -15,6 +16,7 @@ import LandingPage from './components/LandingPage/LandingPage'
 import RegisterPage from './components/RegisterPage/RegisterPage'
 import Login from './components/Auth/Login'
 import RiderRequestsPage from './components/RiderRequests/RiderRequestsPage'
+import MerchantDeliveryRequests from './components/Dashboard/MerchantDeliveryRequests'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function AppContent() {
@@ -27,7 +29,7 @@ function AppContent() {
     { id: '/products', label: 'Products', icon: '📦' },
     { id: '/riders', label: 'Riders', icon: '🚴' },
     { id: '/merchants', label: 'Merchants', icon: '🏪' },
-   
+    { id: '/delivery-requests', label: 'Delivery Requests', icon: '📨' },
   ]
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
@@ -122,6 +124,7 @@ function AppContent() {
             <Route path="/products" element={<Products />} />
             <Route path="/riders" element={<RidersMain />} />
             <Route path="/merchants" element={<Merchants />} />
+            <Route path="/delivery-requests" element={<MerchantDeliveryRequests />} />
             <Route path="/rider-registration" element={<RiderRegistrationPage />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
@@ -150,6 +153,7 @@ function App() {
         {/* Rider Routes - Without Layout */}
         <Route path="/rider/register" element={<RiderRegistrationPage />} />
         <Route path="/rider-dashboard" element={<ProtectedRoute requiredRole="rider"><RiderDashboard /></ProtectedRoute>} />
+        <Route path="/rider/profile" element={<ProtectedRoute requiredRole="rider"><RiderProfile /></ProtectedRoute>} />
         <Route path="/rider/requests" element={<ProtectedRoute requiredRole="rider"><RiderRequestsPage /></ProtectedRoute>} />
         
         {/* Merchant Routes - Without Layout */}

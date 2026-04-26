@@ -14,14 +14,9 @@ const ProtectedRoute = ({ children, requiredRole }) => {
 
   const { token, data } = getAuthData()
 
-  console.log('🔒 ProtectedRoute Check:', { requiredRole, hasToken: !!token, hasData: !!data })
-
   if (!token || !data) {
-    console.log('❌ Access Denied - Redirecting to login')
     return <Navigate to="/login" replace />
   }
-
-  console.log('✅ Access Granted')
   return children
 }
 

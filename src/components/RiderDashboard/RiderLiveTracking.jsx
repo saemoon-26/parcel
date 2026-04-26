@@ -109,31 +109,39 @@ const RiderLiveTracking = ({ parcel, onClose, isClientView = false }) => {
   const geocodeClientAddress = async () => {
     try {
       const address = parcel.details?.client_address || parcel.client_address
+      console.log('🔍 Geocoding address:', address)
+      
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ', Pakistan')}&limit=1&countrycodes=pk`
       )
       const data = await response.json()
+      console.log('🌍 Geocoding API response:', data)
       
       if (data && data[0]) {
         const coords = {
           latitude: parseFloat(data[0].lat),
           longitude: parseFloat(data[0].lon)
         }
+        console.log('✅ Client coordinates:', coords)
         setClientCoords(coords)
         showClientMarker(coords.latitude, coords.longitude)
+      } else {
+        console.warn('❌ No geocoding results found')
       }
     } catch (error) {
-      console.error('Geocoding failed:', error)
+      console.error('❌ Geocoding failed:', error)
     }
   }
 
   const showClientMarker = (lat, lng) => {
     if (!mapInstanceRef.current || !window.L) {
-      console.log('Map or Leaflet not ready for client marker')
+      console.log('⚠️ Map or Leaflet not ready for client marker')
       return
     }
 
     try {
+      console.log('📍 Adding client marker at:', lat, lng)
+      
       const clientIcon = window.L.divIcon({
         html: `<div class="client-marker-rider">
                 <div class="marker-pin-rider">🎯</div>
@@ -147,10 +155,12 @@ const RiderLiveTracking = ({ parcel, onClose, isClientView = false }) => {
         .addTo(mapInstanceRef.current)
         .bindPopup(`<b>📍 Delivery Location</b><br>${parcel.details?.client_name || parcel.client_name || 'Client'}<br>${parcel.details?.client_address || parcel.client_address || ''}`)
       
-      mapInstanceRef.current.setView([lat, lng], 14)
-      console.log('Client marker added at:', lat, lng)
+      // Zoom to client location
+      mapInstanceRef.current.setView([lat, lng], 15)
+      console.log('✅ Client marker added successfully at:', lat, lng)
+      console.log('🗺️ Map centered at:', lat, lng, 'zoom: 15')
     } catch (error) {
-      console.error('Error adding client marker:', error)
+      console.error('❌ Error adding client marker:', error)
     }
   }
 

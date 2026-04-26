@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './RiderDashboard.css'
 import RiderLiveTracking from './RiderLiveTracking'
+import carImage from '../../images/WhatsApp Image 2026-04-22 at 10.14.10 AM.jpeg'
 
 const RiderDashboard = () => {
   const navigate = useNavigate()
@@ -15,6 +16,8 @@ const RiderDashboard = () => {
   const [verifyParcel, setVerifyParcel] = useState(null)
   const [verificationCode, setVerificationCode] = useState('')
   const [verifyMessage, setVerifyMessage] = useState({ type: '', text: '' })
+  const [profilePicture, setProfilePicture] = useState(null)
+  const [showProfileModal, setShowProfileModal] = useState(false)
 
   const loadParcels = async (id) => {
     try {
@@ -31,7 +34,7 @@ const RiderDashboard = () => {
         setParcels([])
       }
     } catch (error) {
-      console.error('Error loading parcels:', error)
+      
       setParcels([])
     }
   }
@@ -49,6 +52,7 @@ const RiderDashboard = () => {
     
     if (userId) {
       loadParcels(userId)
+      fetchRiderProfile(userId)
       setLoading(false)
       
       // Auto-refresh disabled - use manual refresh button
@@ -58,10 +62,45 @@ const RiderDashboard = () => {
       // }, 30000)
       // return () => clearInterval(interval)
     } else {
-      console.error('No user ID found in:', rider)
+      
       setLoading(false)
     }
   }, [])
+
+  const fetchRiderProfile = async (userId) => {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/rider-registrations')
+      const data = await response.json()
+      const allRiders = data.data || data
+      const currentRider = allRiders.find(r => r.user_id === userId || r.id === userId)
+      
+      if (currentRider) {
+        // Merge with existing riderData to preserve login data
+        const existingData = JSON.parse(localStorage.getItem('riderData') || '{}')
+        const mergedData = {
+          ...existingData,
+          ...currentRider,
+          id: existingData.id || currentRider.user_id || currentRider.id,
+          user_id: existingData.user_id || currentRider.user_id || currentRider.id
+        }
+        
+        setRiderData(mergedData)
+        // Update localStorage with merged data
+        localStorage.setItem('riderData', JSON.stringify(mergedData))
+        
+        if (currentRider.profile_picture) {
+          setProfilePicture(`http://127.0.0.1:8000/storage/${currentRider.profile_picture}`)
+        } else if (currentRider.documents) {
+          const profileDoc = currentRider.documents.find(doc => doc.document_type === 'profile_picture')
+          if (profileDoc) {
+            setProfilePicture(`http://127.0.0.1:8000/storage/${profileDoc.document_path}`)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+    }
+  }
 
   // Handle browser back button
   useEffect(() => {
@@ -89,19 +128,9 @@ const RiderDashboard = () => {
     }
     
     try {
+      // Only send status update - no client details needed
       const updateData = {
-        tracking_code: parcel.tracking_code,
-        client_name: parcel.client_name || parcel.details?.client_name,
-        client_phone_number: parcel.client_phone_number || parcel.details?.client_phone_number,
-        client_address: parcel.client_address || parcel.details?.client_address,
-        client_email: parcel.client_email || parcel.details?.client_email || '',
-        pickup_location: parcel.pickup_location,
-        pickup_city: parcel.pickup_city,
-        assigned_to: parcel.assigned_to,
-        parcel_status: 'pickup_requested',
-        payment_method: parcel.payment_method || '',
-        rider_payout: parcel.rider_payout || 0,
-        company_payout: parcel.company_payout || 0
+        parcel_status: 'pickup_requested'
       }
       
       const response = await fetch(`http://127.0.0.1:8000/api/parcels/${parcel.parcel_id}`, {
@@ -121,10 +150,11 @@ const RiderDashboard = () => {
           loadParcels(userId)
         }
       } else {
-        alert(`❌ Failed: ${data.message || 'Unknown error'}`)
+        console.error('Error response:', data)
+        alert(`❌ Failed: ${data.message || JSON.stringify(data.errors) || 'Unknown error'}`)
       }
     } catch (error) {
-      console.error('Error requesting pickup:', error)
+      console.error('Request error:', error)
       alert('❌ Error sending pickup request')
     }
   }
@@ -135,19 +165,9 @@ const RiderDashboard = () => {
     }
     
     try {
+      // Only send status update
       const updateData = {
-        tracking_code: parcel.tracking_code,
-        client_name: parcel.client_name || parcel.details?.client_name,
-        client_phone_number: parcel.client_phone_number || parcel.details?.client_phone_number,
-        client_address: parcel.client_address || parcel.details?.client_address,
-        client_email: parcel.client_email || parcel.details?.client_email || '',
-        pickup_location: parcel.pickup_location,
-        pickup_city: parcel.pickup_city,
-        assigned_to: parcel.assigned_to,
-        parcel_status: 'out_for_delivery',
-        payment_method: parcel.payment_method || '',
-        rider_payout: parcel.rider_payout || 0,
-        company_payout: parcel.company_payout || 0
+        parcel_status: 'out_for_delivery'
       }
       
       const response = await fetch(`http://127.0.0.1:8000/api/parcels/${parcel.parcel_id}`, {
@@ -166,10 +186,11 @@ const RiderDashboard = () => {
         }
       } else {
         const data = await response.json()
-        alert(`❌ Failed: ${data.message || 'Unknown error'}`)
+        console.error('Error response:', data)
+        alert(`❌ Failed: ${data.message || JSON.stringify(data.errors) || 'Unknown error'}`)
       }
     } catch (error) {
-      console.error('Error starting delivery:', error)
+      console.error('Request error:', error)
       alert('❌ Error starting delivery')
     }
   }
@@ -209,7 +230,7 @@ const RiderDashboard = () => {
         setVerifyMessage({ type: 'error', text: data.message || '❌ Invalid verification code' })
       }
     } catch (error) {
-      console.error('Error verifying delivery:', error)
+      
       setVerifyMessage({ type: 'error', text: '❌ Error verifying delivery' })
     }
   }
@@ -269,15 +290,47 @@ const RiderDashboard = () => {
     <div className="rider-dashboard">
       <div className="rider-header">
         <div className="rider-info">
-          <div className="rider-avatar">
-            {riderData?.first_name?.charAt(0) || riderData?.full_name?.charAt(0) || 'R'}{riderData?.last_name?.charAt(0) || ''}
+          <div 
+            className="rider-avatar" 
+            onClick={() => setShowProfileModal(true)}
+            style={{
+              backgroundImage: profilePicture ? `url(${profilePicture})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.05)'
+              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.2)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)'
+              e.currentTarget.style.boxShadow = ''
+            }}
+          >
+            {!profilePicture && (riderData?.full_name?.charAt(0) || riderData?.first_name?.charAt(0) || 'R')}{!profilePicture && (riderData?.last_name?.charAt(0) || '')}
           </div>
           <div className="rider-details">
-            <h2>{riderData?.first_name || riderData?.full_name || 'Rider'} {riderData?.last_name || ''}</h2>
-            <p>ID: {riderData?.id || riderData?.user_id || riderData?.rider_id || 'N/A'} • {riderData?.phone_number || riderData?.mobile_primary || 'N/A'}</p>
+            <h2>{riderData?.full_name || riderData?.first_name || 'Rider'} {riderData?.last_name || ''}</h2>
+            <p>ID: {riderData?.user_id || riderData?.id || 'N/A'} • {riderData?.mobile_primary || riderData?.phone_number || 'N/A'}</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => navigate('/rider/profile')} className="profile-btn" style={{
+            background: 'linear-gradient(135deg, #11998e, #38ef7d)',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            👤 My Profile
+          </button>
           <button onClick={() => navigate('/rider/requests')} className="requests-btn" style={{
             background: 'linear-gradient(135deg, #667eea, #764ba2)',
             color: 'white',
@@ -377,8 +430,8 @@ const RiderDashboard = () => {
                     <span className="location-icon">📍</span>
                     <div>
                       <p className="location-label">Pickup</p>
-                      <p className="location-text">{parcel.pickup_city}</p>
-                      <p className="location-detail">{parcel.pickup_location}</p>
+                      <p className="location-text">Faisalabad</p>
+                      <p className="location-detail">Kohinoor City</p>
                     </div>
                   </div>
                   <div className="location-arrow">→</div>
@@ -544,7 +597,7 @@ const RiderDashboard = () => {
               </div>
               <div className="detail-row">
                 <span className="detail-label">Pickup Location:</span>
-                <span className="detail-value">{selectedParcel.pickup_location}, {selectedParcel.pickup_city}</span>
+                <span className="detail-value">Kohinoor City, Faisalabad</span>
               </div>
               <div className="detail-row">
                 <span className="detail-label">Dropoff Address:</span>
@@ -576,6 +629,67 @@ const RiderDashboard = () => {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {showProfileModal && profilePicture && (
+        <div className="modal-overlay" onClick={() => setShowProfileModal(false)} style={{ zIndex: 10000 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            position: 'relative',
+            maxWidth: '90vw',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '20px'
+          }}>
+            <button 
+              onClick={() => setShowProfileModal(false)}
+              style={{
+                position: 'absolute',
+                top: '-50px',
+                right: '0',
+                background: 'white',
+                border: 'none',
+                borderRadius: '50%',
+                width: '40px',
+                height: '40px',
+                fontSize: '24px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                zIndex: 10001
+              }}
+            >
+              ×
+            </button>
+            <img 
+              src={profilePicture} 
+              alt="Profile" 
+              style={{
+                maxWidth: '90vw',
+                maxHeight: '90vh',
+                objectFit: 'contain',
+                borderRadius: '12px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+              }}
+            />
+            <button
+              onClick={() => navigate('/rider/profile')}
+              style={{
+                background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                color: 'white',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+              }}
+            >
+              👤 Edit Profile
+            </button>
           </div>
         </div>
       )}

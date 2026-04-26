@@ -42,7 +42,7 @@ const AddRider = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    console.log('Form Data State:', formData)
+
     
     if (!formData.name || !formData.email || !formData.phone || !formData.city || !formData.cnic || !formData.license || !formData.address || !formData.state) {
       alert('Please fill all required fields')
@@ -65,9 +65,9 @@ const AddRider = () => {
         address: formData.address
       }
       
-      console.log('Sending data:', riderData)
+
       const response = await axios.post('http://127.0.0.1:8000/api/rider-registrations', riderData)
-      console.log('Response:', response.data)
+
       alert('Rider added successfully!')
       
       setFormData({
@@ -83,7 +83,7 @@ const AddRider = () => {
         vehicleType: ''
       })
     } catch (error) {
-      console.error('Error adding rider:', error.response?.data)
+      
       const errorMsg = error.response?.data?.errors 
         ? Object.values(error.response.data.errors).flat().join(', ')
         : error.response?.data?.message || error.message

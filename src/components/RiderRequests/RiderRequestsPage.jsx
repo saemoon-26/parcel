@@ -16,7 +16,7 @@ const RiderRequestsPage = () => {
         const parsed = JSON.parse(riderData);
         return parsed.id || parsed.user_id;
       } catch (e) {
-        console.error('Error parsing riderData:', e);
+        ;
       }
     }
     return localStorage.getItem('riderId') || 5;
@@ -40,7 +40,7 @@ const RiderRequestsPage = () => {
       }
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching requests:', error);
+      ;
       setLoading(false);
     }
   };
@@ -209,8 +209,8 @@ const RiderRequestsPage = () => {
                     <div className="location-icon">📍</div>
                     <div className="location-details">
                       <span className="location-label">Pickup</span>
-                      <span className="location-text">{request.pickup_location}</span>
-                      <span className="location-city">{request.pickup_city}</span>
+                      <span className="location-text">Kohinoor City (CourierHub Warehouse)</span>
+                      <span className="location-city">Faisalabad</span>
                     </div>
                   </div>
 
@@ -223,7 +223,7 @@ const RiderRequestsPage = () => {
                     <div className="location-icon">🎯</div>
                     <div className="location-details">
                       <span className="location-label">Dropoff</span>
-                      <span className="location-text">{request.dropoff_location}</span>
+                      <span className="location-text">{request.client_address}</span>
                     </div>
                   </div>
                 </div>

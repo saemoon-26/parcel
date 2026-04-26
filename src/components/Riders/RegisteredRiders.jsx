@@ -19,7 +19,7 @@ import {
   Chip,
   Avatar
 } from '@mui/material'
-import { Visibility, CheckCircle, Cancel, Delete } from '@mui/icons-material'
+import { Visibility, CheckCircle, Cancel, Delete, Person, Phone, Email, Home, CreditCard, Badge, LocationOn, DirectionsCar, Description, AccountBalance } from '@mui/icons-material'
 import axios from 'axios'
 
 const RegisteredRiders = () => {
@@ -210,64 +210,173 @@ const RegisteredRiders = () => {
         onClose={() => setViewDialog({ open: false, rider: null })}
         maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '20px',
+            overflow: 'hidden',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+          }
+        }}
       >
-        <DialogTitle>
-          Registration Details - {viewDialog.rider?.full_name}
-        </DialogTitle>
-        <DialogContent>
+        <Box sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', padding: '24px', color: 'white', display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Avatar 
+            src={viewDialog.rider?.documents?.find(doc => doc.document_type === 'profile_picture')?.document_path ? `http://127.0.0.1:8000/storage/${viewDialog.rider.documents.find(doc => doc.document_type === 'profile_picture').document_path}` : undefined}
+            sx={{ 
+              width: 80, 
+              height: 80, 
+              border: '4px solid white', 
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+              cursor: viewDialog.rider?.documents?.find(doc => doc.document_type === 'profile_picture') ? 'pointer' : 'default',
+              transition: 'transform 0.3s ease',
+              '&:hover': viewDialog.rider?.documents?.find(doc => doc.document_type === 'profile_picture') ? {
+                transform: 'scale(1.1)'
+              } : {}
+            }}
+            onClick={() => {
+              const profilePic = viewDialog.rider?.documents?.find(doc => doc.document_type === 'profile_picture')
+              if (profilePic) window.open(`http://127.0.0.1:8000/storage/${profilePic.document_path}`, '_blank')
+            }}
+          >
+            {!viewDialog.rider?.documents?.find(doc => doc.document_type === 'profile_picture') && <Person sx={{ fontSize: 40 }} />}
+          </Avatar>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+              {viewDialog.rider?.full_name || 'Registration Details'}
+            </Typography>
+            <Typography sx={{ opacity: 0.9 }}>ID: {viewDialog.rider?.id}</Typography>
+            {viewDialog.rider?.documents?.find(doc => doc.document_type === 'profile_picture') && (
+              <Typography sx={{ opacity: 0.8, fontSize: '0.85rem', mt: 0.5 }}>Click photo to view full size</Typography>
+            )}
+          </Box>
+        </Box>
+        <DialogContent sx={{ padding: '24px', background: 'linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%)' }}>
           {viewDialog.rider && (
             <div style={{ marginTop: '8px' }}>
               
               {/* Personal Information */}
-              <div style={{ marginBottom: '16px' }}>
-                <Typography variant="h6" sx={{ mb: 2, color: '#1976d2' }}>Personal Information</Typography>
-                <Typography><strong>Full Name:</strong> {viewDialog.rider.full_name || (viewDialog.rider.first_name + ' ' + viewDialog.rider.last_name) || 'N/A'}</Typography>
-                <Typography><strong>Father Name:</strong> {viewDialog.rider.father_name || 'N/A'}</Typography>
-                <Typography><strong>CNIC:</strong> {viewDialog.rider.cnic_number || 'N/A'}</Typography>
-                <Typography><strong>Email:</strong> {viewDialog.rider.email || 'N/A'}</Typography>
-                <Typography><strong>Primary Phone:</strong> {viewDialog.rider.mobile_primary || viewDialog.rider.phone_number || 'N/A'}</Typography>
-                <Typography><strong>Alternate Phone:</strong> {viewDialog.rider.mobile_alternate || 'N/A'}</Typography>
-                <Typography><strong>Address:</strong> {viewDialog.rider.address || 'N/A'}</Typography>
-              </div>
+              <Box sx={{ background: 'white', borderRadius: '16px', padding: '20px', marginBottom: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', transition: 'transform 0.3s ease, box-shadow 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }}>
+                <Typography sx={{ display: 'flex', alignItems: 'center', gap: 1.5, marginBottom: 2, paddingBottom: 1.5, borderBottom: '2px solid #1976d2', fontWeight: 600, fontSize: '1.1rem', color: '#1976d2' }}>
+                  <Person /> Personal Information
+                </Typography>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Badge fontSize="small" /> Full Name:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.full_name || `${viewDialog.rider.first_name} ${viewDialog.rider.last_name}` || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Person fontSize="small" /> Father Name:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.father_name || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><CreditCard fontSize="small" /> CNIC:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.cnic_number || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Email fontSize="small" /> Email:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.email || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Phone fontSize="small" /> Primary Phone:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.mobile_primary || viewDialog.rider.phone_number || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Phone fontSize="small" /> Alternate Phone:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.mobile_alternate || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Home fontSize="small" /> Address:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.address || 'N/A'}</Box>
+                </Box>
+              </Box>
               
               {/* Location */}
-              <div style={{ marginBottom: '16px' }}>
-                <Typography variant="h6" sx={{ mb: 2, color: '#ff9800' }}>Location</Typography>
-                <Typography><strong>City:</strong> {viewDialog.rider.city || 'N/A'}</Typography>
-                <Typography><strong>State:</strong> {viewDialog.rider.state || 'N/A'}</Typography>
-              </div>
+              <Box sx={{ background: 'white', borderRadius: '16px', padding: '20px', marginBottom: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', transition: 'transform 0.3s ease, box-shadow 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }}>
+                <Typography sx={{ display: 'flex', alignItems: 'center', gap: 1.5, marginBottom: 2, paddingBottom: 1.5, borderBottom: '2px solid #ff9800', fontWeight: 600, fontSize: '1.1rem', color: '#ff9800' }}>
+                  <LocationOn /> Location
+                </Typography>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><LocationOn fontSize="small" /> City:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.city || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><LocationOn fontSize="small" /> State:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.state || 'N/A'}</Box>
+                </Box>
+              </Box>
               
               {/* Vehicle Information */}
-              <div style={{ marginBottom: '16px' }}>
-                <Typography variant="h6" sx={{ mb: 2, color: '#4caf50' }}>Vehicle Information</Typography>
-                <Typography><strong>Type:</strong> {viewDialog.rider.vehicle?.vehicle_type || viewDialog.rider.vehicle_type || 'N/A'}</Typography>
-                <Typography><strong>Brand:</strong> {viewDialog.rider.vehicle?.vehicle_brand || viewDialog.rider.vehicle_brand || 'N/A'}</Typography>
-                <Typography><strong>Model:</strong> {viewDialog.rider.vehicle?.vehicle_model || viewDialog.rider.vehicle_model || 'N/A'}</Typography>
-                <Typography><strong>Registration:</strong> {viewDialog.rider.vehicle?.vehicle_registration || viewDialog.rider.vehicle_registration || 'Not Provided'}</Typography>
-                <Typography><strong>License Number:</strong> {viewDialog.rider.driving_license_number || 'N/A'}</Typography>
-              </div>
+              <Box sx={{ background: 'white', borderRadius: '16px', padding: '20px', marginBottom: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', transition: 'transform 0.3s ease, box-shadow 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }}>
+                <Typography sx={{ display: 'flex', alignItems: 'center', gap: 1.5, marginBottom: 2, paddingBottom: 1.5, borderBottom: '2px solid #4caf50', fontWeight: 600, fontSize: '1.1rem', color: '#4caf50' }}>
+                  <DirectionsCar /> Vehicle Information
+                </Typography>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><DirectionsCar fontSize="small" /> Type:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.vehicle?.vehicle_type || viewDialog.rider.vehicle_type || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><DirectionsCar fontSize="small" /> Brand:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.vehicle?.vehicle_brand || viewDialog.rider.vehicle_brand || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><DirectionsCar fontSize="small" /> Model:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.vehicle?.vehicle_model || viewDialog.rider.vehicle_model || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Description fontSize="small" /> Registration:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.vehicle?.vehicle_registration || viewDialog.rider.vehicle_registration || 'Not Provided'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><CreditCard fontSize="small" /> License Number:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.driving_license_number || 'N/A'}</Box>
+                </Box>
+              </Box>
               
               {/* Bank Details */}
               {(viewDialog.rider.bank?.bank_name || viewDialog.rider.bank_name || viewDialog.rider.bank?.account_number || viewDialog.rider.account_number) && (
-                <div style={{ marginBottom: '16px' }}>
-                  <Typography variant="h6" sx={{ mb: 2, color: '#9c27b0' }}>Bank Details</Typography>
-                  <Typography><strong>Bank:</strong> {viewDialog.rider.bank?.bank_name || viewDialog.rider.bank_name || 'N/A'}</Typography>
-                  <Typography><strong>Account Number:</strong> {viewDialog.rider.bank?.account_number || viewDialog.rider.account_number || 'Not Provided'}</Typography>
-                  <Typography><strong>Account Title:</strong> {viewDialog.rider.bank?.account_title || viewDialog.rider.account_title || 'N/A'}</Typography>
-                </div>
+                <Box sx={{ background: 'white', borderRadius: '16px', padding: '20px', marginBottom: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', transition: 'transform 0.3s ease, box-shadow 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }}>
+                  <Typography sx={{ display: 'flex', alignItems: 'center', gap: 1.5, marginBottom: 2, paddingBottom: 1.5, borderBottom: '2px solid #9c27b0', fontWeight: 600, fontSize: '1.1rem', color: '#9c27b0' }}>
+                    <AccountBalance /> Bank Details
+                  </Typography>
+                  <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                    <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><AccountBalance fontSize="small" /> Bank:</Box>
+                    <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.bank?.bank_name || viewDialog.rider.bank_name || 'N/A'}</Box>
+                  </Box>
+                  <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                    <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><CreditCard fontSize="small" /> Account Number:</Box>
+                    <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.bank?.account_number || viewDialog.rider.account_number || 'Not Provided'}</Box>
+                  </Box>
+                  <Box sx={{ display: 'flex', padding: '10px 0' }}>
+                    <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Person fontSize="small" /> Account Title:</Box>
+                    <Box sx={{ color: '#333', flex: 1 }}>{viewDialog.rider.bank?.account_title || viewDialog.rider.account_title || 'N/A'}</Box>
+                  </Box>
+                </Box>
               )}
               
               {/* Documents */}
-              <div>
-                <Typography variant="h6" sx={{ mb: 2, color: '#f44336' }}>Documents</Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              <Box sx={{ background: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', transition: 'transform 0.3s ease, box-shadow 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }}>
+                <Typography sx={{ display: 'flex', alignItems: 'center', gap: 1.5, marginBottom: 2, paddingBottom: 1.5, borderBottom: '2px solid #f44336', fontWeight: 600, fontSize: '1.1rem', color: '#f44336' }}>
+                  <Description /> Documents
+                </Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 1.5, marginTop: 1.5 }}>
                   {viewDialog.rider.documents?.length > 0 ? (
                     viewDialog.rider.documents.map((doc, idx) => (
                       <Button 
                         key={idx}
-                        variant="outlined" 
+                        variant="contained"
                         size="small" 
                         onClick={() => window.open(`http://127.0.0.1:8000/storage/${doc.document_path}`, '_blank')}
+                        sx={{ 
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          borderRadius: '12px',
+                          padding: '12px 16px',
+                          textTransform: 'capitalize',
+                          fontWeight: 500,
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            transform: 'scale(1.05)',
+                            boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)'
+                          }
+                        }}
                       >
                         {doc.document_type?.replace('_', ' ').toUpperCase()}
                       </Button>
@@ -276,18 +385,18 @@ const RegisteredRiders = () => {
                     <Typography color="text.secondary">No documents uploaded</Typography>
                   )}
                 </Box>
-              </div>
+              </Box>
             </div>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => handleReject(viewDialog.rider?.id)} color="error">
+        <DialogActions sx={{ padding: '16px 24px', background: '#f8f9fa', gap: 1 }}>
+          <Button onClick={() => handleReject(viewDialog.rider?.id)} color="error" variant="outlined" sx={{ borderRadius: '12px', textTransform: 'none', px: 3 }}>
             Reject
           </Button>
-          <Button onClick={() => handleApprove(viewDialog.rider?.id)} color="success" variant="contained">
+          <Button onClick={() => handleApprove(viewDialog.rider?.id)} color="success" variant="contained" sx={{ borderRadius: '12px', textTransform: 'none', px: 3 }}>
             Approve
           </Button>
-          <Button onClick={() => setViewDialog({ open: false, rider: null })}>
+          <Button onClick={() => setViewDialog({ open: false, rider: null })} variant="contained" sx={{ borderRadius: '12px', textTransform: 'none', px: 3 }}>
             Close
           </Button>
         </DialogActions>

@@ -40,10 +40,10 @@ const Login = () => {
         password: formData.password
       })
 
-      console.log('Login response:', response.data)
+
       const role = response.data.role
       const status = response.data.status
-      console.log('User role:', role, 'Status:', status)
+
 
       // Check status for rider and merchant
       if (role === 'rider' || role === 'merchant') {
@@ -64,27 +64,54 @@ const Login = () => {
 
       // If status is active or admin, proceed with login
       if (role === 'admin') {
+        const adminData = {
+          id: response.data.id,
+          first_name: response.data.first_name,
+          last_name: response.data.last_name,
+          email: response.data.email,
+          role: response.data.role
+        }
         localStorage.setItem('adminToken', response.data.token)
-        localStorage.setItem('adminData', JSON.stringify(response.data))
+        localStorage.setItem('adminData', JSON.stringify(adminData))
         alert('✅ Admin login successful!')
         navigate('/admin-dashboard', { replace: true })
       } else if (role === 'merchant') {
+        const merchantData = {
+          id: response.data.id,
+          first_name: response.data.first_name,
+          last_name: response.data.last_name,
+          email: response.data.email,
+          role: response.data.role,
+          company_info: response.data.company_info
+        }
         localStorage.setItem('merchantToken', response.data.token)
-        localStorage.setItem('merchantData', JSON.stringify(response.data))
+        localStorage.setItem('merchantData', JSON.stringify(merchantData))
         alert('✅ Merchant login successful!')
         navigate('/merchant/dashboard', { replace: true })
       } else if (role === 'rider') {
-        const riderData = response.data.rider || response.data.user || response.data.data || response.data
+        // Backend returns id directly in response.data
+        const riderData = {
+          id: response.data.id,
+          user_id: response.data.id,
+          first_name: response.data.first_name,
+          last_name: response.data.last_name,
+          email: response.data.email,
+          role: response.data.role,
+          status: response.data.status
+        }
+        
         localStorage.setItem('riderToken', response.data.token)
         localStorage.setItem('riderData', JSON.stringify(riderData))
+        localStorage.setItem('riderId', response.data.id.toString())
+        
+        console.log('✅ Rider logged in:', riderData)
         alert('✅ Rider login successful!')
         navigate('/rider-dashboard', { replace: true })
       } else {
-        console.log('Unknown role:', role)
         setError('Invalid user role: ' + role)
       }
     } catch (error) {
-      console.error('Login error:', error.response?.data || error)
+      
       
       // Handle backend errors
       if (error.response?.status === 403) {

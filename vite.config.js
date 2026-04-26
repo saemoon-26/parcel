@@ -8,7 +8,11 @@ export default defineConfig({
     port: 5173,
     https: false,
     hmr: {
-      host: 'localhost'
+      host: 'localhost',
+      protocol: 'ws'
+    },
+    watch: {
+      usePolling: true
     }
   },
   define: {

@@ -28,7 +28,7 @@ const RegisteredRidersPage = () => {
       const response = await axios.get('http://127.0.0.1:8000/api/rider-registrations')
       setRiders(response.data)
     } catch (error) {
-      console.error('Error fetching riders:', error)
+      
     } finally {
       setLoading(false)
     }
@@ -41,7 +41,7 @@ const RegisteredRidersPage = () => {
       })
       fetchRiders()
     } catch (error) {
-      console.error('Error updating status:', error)
+      
     }
   }
 
@@ -51,7 +51,7 @@ const RegisteredRidersPage = () => {
       setDeleteDialog(false)
       fetchRiders()
     } catch (error) {
-      console.error('Error deleting rider:', error)
+      
     }
   }
 

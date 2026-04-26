@@ -55,11 +55,11 @@ const LiveTracking = ({ trackingCode, onClose }) => {
 
   const initMap = () => {
     if (!mapRef.current || mapInstanceRef.current) {
-      console.log('Map init skipped:', { hasRef: !!mapRef.current, hasInstance: !!mapInstanceRef.current })
+
       return
     }
 
-    console.log('Initializing map...')
+
     const map = window.L.map(mapRef.current, {
       zoomControl: false,
       attributionControl: false
@@ -70,7 +70,7 @@ const LiveTracking = ({ trackingCode, onClose }) => {
     }).addTo(map)
 
     mapInstanceRef.current = map
-    console.log('Map initialized successfully')
+
   }
 
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -103,20 +103,20 @@ const LiveTracking = ({ trackingCode, onClose }) => {
           latitude: parseFloat(data[0].lat),
           longitude: parseFloat(data[0].lon)
         }
-        console.log('Geocoded client address:', coords)
+
         updateClientLocation(coords)
       }
     } catch (error) {
-      console.error('Geocoding failed:', error)
+      
     }
   }
 
   const fetchLiveTracking = async () => {
     try {
-      console.log('Fetching tracking data for:', trackingCode)
+
       const response = await fetch(`http://127.0.0.1:8000/api/track/live/${trackingCode}`)
       const result = await response.json()
-      console.log('API Response:', result)
+
       
       if (result.status && result.tracking_available) {
         const isFirstLoad = !trackingData
@@ -150,22 +150,22 @@ const LiveTracking = ({ trackingCode, onClose }) => {
           }
         }
       } else {
-        console.log('Tracking not available:', result)
+
       }
     } catch (error) {
-      console.error('Live tracking error:', error)
+      
     }
   }
 
   const updateRiderLocation = (location) => {
     if (!location || !location.latitude || !location.longitude) {
-      console.log('Invalid rider location:', location)
+
       return
     }
     
     const lat = parseFloat(location.latitude)
     const lng = parseFloat(location.longitude)
-    console.log('Updating rider location:', { lat, lng })
+
     setRiderLocation({ lat, lng })
 
     if (mapInstanceRef.current && window.L) {
@@ -185,10 +185,10 @@ const LiveTracking = ({ trackingCode, onClose }) => {
         riderMarkerRef.current = window.L.marker([lat, lng], { icon: riderIcon })
           .addTo(mapInstanceRef.current)
           .bindPopup('<b>🏍️ Rider Location</b><br>On the way!')
-        console.log('Rider marker added')
+
       }
     } else {
-      console.log('Map not ready for rider marker')
+
     }
   }
 
@@ -196,7 +196,7 @@ const LiveTracking = ({ trackingCode, onClose }) => {
     if (!location) return
     const lat = parseFloat(location.latitude)
     const lng = parseFloat(location.longitude)
-    console.log('Updating client location:', { lat, lng })
+
     setClientLocation({ lat, lng })
 
     if (mapInstanceRef.current && window.L) {
@@ -214,7 +214,7 @@ const LiveTracking = ({ trackingCode, onClose }) => {
         clientMarkerRef.current = window.L.marker([lat, lng], { icon: clientIcon })
           .addTo(mapInstanceRef.current)
           .bindPopup(`<b>📍 Delivery Location</b><br>${trackingData?.client_name || 'Customer'}<br>${trackingData?.client_address || ''}`)
-        console.log('Client marker added at:', lat, lng)
+
       }
     }
   }
@@ -264,7 +264,7 @@ const LiveTracking = ({ trackingCode, onClose }) => {
         }).addTo(mapInstanceRef.current)
       }
     } catch (error) {
-      console.error('Routing error:', error)
+      
       // Fallback to straight line
       routeLineRef.current = window.L.polyline([riderLatLng, clientLatLng], {
         color: '#2196F3',

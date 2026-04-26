@@ -43,26 +43,26 @@ const TrackParcel = () => {
       return
     }
 
-    console.log('Searching for tracking code:', code)
+
 
     try {
       const response = await fetch(`http://127.0.0.1:8000/api/parcels/track/${code}`)
-      console.log('Response status:', response.status)
+
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        console.log('Error response:', errorData)
+
         throw new Error('Parcel not found')
       }
       
       const data = await response.json()
-      console.log('Parcel data:', data)
+
       const parcel = data.data || data
       setParcelData(parcel)
       
       // Don't auto-show live tracking, just show the details
     } catch (err) {
-      console.error('Tracking error:', err)
+      
       setError('Parcel not found. Please check your tracking code.')
     }
   }

@@ -1,14 +1,16 @@
-import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Box, IconButton, Tooltip, Alert, Typography, MenuItem, Select, FormControl, InputLabel } from '@mui/material'
-import { Edit, Delete, QrCodeScanner, CheckCircle } from '@mui/icons-material'
+import { Edit, Delete, QrCodeScanner, CheckCircle, LocationOn } from '@mui/icons-material'
 import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode'
 import axios from 'axios'
+import FreeMapPicker from '../MapPicker/FreeMapPicker'
 
 const Products = () => {
   const [parcels, setParcels] = useState([])
   const [riders, setRiders] = useState([])
   const [merchants, setMerchants] = useState([])
   const [loading, setLoading] = useState(true)
+  const [riderRequests, setRiderRequests] = useState({})
   const [open, setOpen] = useState(false)
   const [parcelFormOpen, setParcelFormOpen] = useState(false)
   const [selectedMerchant, setSelectedMerchant] = useState(null)
@@ -22,9 +24,12 @@ const Products = () => {
   const [verificationCode, setVerificationCode] = useState('')
   const [verifyMessage, setVerifyMessage] = useState({ type: '', text: '' })
   const verificationInputRef = useRef(null)
+  const [mapOpen, setMapOpen] = useState(false)
+  const [mapType, setMapType] = useState('') // 'pickup' or 'client'
   
   const statusOptions = ['pending', 'picked_up', 'out_for_delivery', 'delivered']
   const cities = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala', 'Hyderabad', 'Sukkur']
+  const paymentMethods = ['Cash on Delivery', 'JazzCash']
   const [formData, setFormData] = useState({
     tracking_code: '',
     client_name: '',
@@ -44,13 +49,22 @@ const Products = () => {
 
   const fetchParcels = useCallback(async () => {
     try {
-      const response = await axios.get("http://127.0.0.1:8000/api/parcels", { timeout: 10000 })
-      const newData = response.data?.data || []
+      // Fetch parcels and rider requests in parallel
+      const [parcelsResponse, requestsResponse] = await Promise.all([
+        axios.get("http://127.0.0.1:8000/api/parcels", { timeout: 10000 }),
+        axios.get("http://127.0.0.1:8000/api/parcels/all-rider-requests", { timeout: 10000 })
+      ])
+      
+      const newData = parcelsResponse.data?.data || []
+      const allRequests = requestsResponse.data?.data || {}
+      
       setParcels(newData)
+      setRiderRequests(allRequests)
       setLoading(false)
     } catch (error) {
-      console.error('Error fetching parcels:', error.message)
+      console.error('Error fetching data:', error)
       setParcels([])
+      setRiderRequests({})
       setLoading(false)
     }
   }, [])
@@ -62,7 +76,6 @@ const Products = () => {
       setRiders(ridersData)
       localStorage.setItem('riders', JSON.stringify(ridersData))
     } catch (error) {
-      console.error('Error fetching riders:', error.message)
       setRiders([])
     }
   }, [])
@@ -72,18 +85,12 @@ const Products = () => {
       const response = await axios.get("http://127.0.0.1:8000/api/merchants", { timeout: 10000 })
       const allMerchants = response.data?.data || []
       
-      // Filter only approved merchants
       const approvedMerchants = allMerchants.filter(merchant => {
-        // Check if merchant company is approved
         return merchant.company?.approval_status === 'approved'
       })
       
-      console.log('Total merchants:', allMerchants.length)
-      console.log('Approved merchants:', approvedMerchants.length)
-      
       setMerchants(approvedMerchants)
     } catch (error) {
-      console.error('Error fetching merchants:', error.message)
       setMerchants([])
     }
   }, [])
@@ -103,16 +110,14 @@ const Products = () => {
             tracking_code: response.data.tracking_code
           }))
         })
-        .catch(error => console.error('Error generating tracking code:', error))
+        .catch(error => {})
     }
   }, [open])
 
+  // OPTIMIZED: useCallback to prevent re-creating function on every render
   const handleChange = useCallback((e) => {
     const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    setFormData(prev => ({ ...prev, [name]: value }))
   }, [])
 
   const handleOpenDialog = useCallback(() => setOpen(true), [])
@@ -120,9 +125,6 @@ const Products = () => {
 
   const handleScan = useCallback((decodedText) => {
     try {
-      console.log('Scanned text:', decodedText)
-      
-      // Stop scanner immediately
       if (scannerRef.current) {
         scannerRef.current.clear().catch(() => {})
         scannerRef.current = null
@@ -132,13 +134,9 @@ const Products = () => {
       try {
         qrData = JSON.parse(decodedText)
       } catch {
-        // If not JSON, treat as tracking code
         qrData = { tracking_code: decodedText }
       }
       
-      console.log('Parsed QR data:', qrData)
-      
-      // Update form state immediately
       setFormData(prev => {
         const updated = { ...prev }
         Object.keys(qrData).forEach(key => {
@@ -149,12 +147,10 @@ const Products = () => {
         return updated
       })
       
-      // Close scanner dialog
       setScannerOpen(false)
       alert('QR Code scan successful! ✅')
       
     } catch (error) {
-      console.error('QR scan error:', error)
       alert('QR Code scan failed ❌')
     }
   }, [])
@@ -173,82 +169,127 @@ const Products = () => {
     }
   }, [handleScan])
 
+  // OPTIMIZED: Only run scanner effect when scannerOpen changes
   useEffect(() => {
-    if (scannerOpen) {
-      const initScanner = async () => {
-        try {
-          const element = document.getElementById('qr-reader')
-          if (element && !scannerRef.current) {
-            // Clear any existing content
-            element.innerHTML = ''
-            
-            const config = {
-              fps: 30,
-              qrbox: { width: 280, height: 280 },
-              aspectRatio: 1.0,
-              disableFlip: false,
-              rememberLastUsedCamera: true,
-              supportedScanTypes: [0],
-              experimentalFeatures: {
-                useBarCodeDetectorIfSupported: true
-              },
-              videoConstraints: {
-                facingMode: { ideal: "environment" },
-                width: { ideal: 640 },
-                height: { ideal: 480 }
-              },
-              formatsToSupport: [0, 1, 2, 3, 4, 5, 6, 7, 8]
-            }
-            
-            const scanner = new Html5QrcodeScanner('qr-reader', config, false)
-            scannerRef.current = scanner
-            
-            scanner.render(
-              (decodedText) => {
-                console.log('QR Code detected:', decodedText)
-                handleScan(decodedText)
-              },
-              (error) => {
-                // Silent error for continuous scanning
-              }
-            )
+    if (!scannerOpen) return
+
+    const initScanner = async () => {
+      try {
+        const element = document.getElementById('qr-reader')
+        if (element && !scannerRef.current) {
+          element.innerHTML = ''
+          
+          const config = {
+            fps: 30,
+            qrbox: { width: 280, height: 280 },
+            aspectRatio: 1.0,
+            disableFlip: false,
+            rememberLastUsedCamera: true,
+            supportedScanTypes: [0],
+            experimentalFeatures: {
+              useBarCodeDetectorIfSupported: true
+            },
+            videoConstraints: {
+              facingMode: { ideal: "environment" },
+              width: { ideal: 640 },
+              height: { ideal: 480 }
+            },
+            formatsToSupport: [0, 1, 2, 3, 4, 5, 6, 7, 8]
           }
-        } catch (error) {
-          console.error('Scanner initialization error:', error)
+          
+          const scanner = new Html5QrcodeScanner('qr-reader', config, false)
+          scannerRef.current = scanner
+          
+          scanner.render(
+            (decodedText) => {
+              handleScan(decodedText)
+            },
+            (error) => {
+            }
+          )
         }
+      } catch (error) {
       }
-      
-      const timer = setTimeout(initScanner, 200)
-      
-      return () => {
-        clearTimeout(timer)
-        if (scannerRef.current) {
-          scannerRef.current.clear().catch(() => {})
-          scannerRef.current = null
-        }
+    }
+    
+    const timer = setTimeout(initScanner, 200)
+    
+    return () => {
+      clearTimeout(timer)
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(() => {})
+        scannerRef.current = null
       }
     }
   }, [scannerOpen, handleScan])
 
   const handleSubmit = useCallback(async () => {
-    if (!formData.pickup_location.trim()) {
-      alert('Pickup location is required')
+    // Validate client name - only alphabets and spaces
+    if (!formData.client_name.trim()) {
+      alert('⚠️ Client Name is required')
       return
     }
-    if (!formData.client_address.trim()) {
-      alert('Client address is required')
+    const nameRegex = /^[a-zA-Z\s]+$/
+    if (!nameRegex.test(formData.client_name.trim())) {
+      alert('⚠️ Client Name: Only alphabets and spaces are allowed')
       return
     }
-    if (!selectedMerchant) {
-      alert('Merchant is required')
+
+    // Validate phone number - only digits
+    if (!formData.client_phone_number.trim()) {
+      alert('⚠️ Phone Number is required')
       return
     }
-    
-    // Validate email if provided
+    const phoneRegex = /^[0-9]+$/
+    if (!phoneRegex.test(formData.client_phone_number.trim())) {
+      alert('⚠️ Phone Number: Only numbers are allowed')
+      return
+    }
+    if (formData.client_phone_number.trim().length < 10 || formData.client_phone_number.trim().length > 15) {
+      alert('⚠️ Phone Number: Must be between 10-15 digits')
+      return
+    }
+
+    // Validate email format if provided
     if (formData.client_email && formData.client_email.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(formData.client_email)) {
-        alert('Please enter a valid email address')
+        alert('⚠️ Email: Please enter a valid email address')
+        return
+      }
+    }
+
+    // Validate address
+    if (!formData.client_address.trim()) {
+      alert('⚠️ Client Address is required')
+      return
+    }
+
+    // Validate pickup location
+    if (!formData.pickup_location.trim()) {
+      alert('⚠️ Pickup Location is required')
+      return
+    }
+
+    // Validate merchant
+    if (!selectedMerchant) {
+      alert('⚠️ Merchant is required')
+      return
+    }
+
+    // Validate payouts - only numbers
+    if (formData.rider_payout && formData.rider_payout.trim()) {
+      const payoutRegex = /^[0-9]+(\.[0-9]{1,2})?$/
+      if (!payoutRegex.test(formData.rider_payout)) {
+        alert('⚠️ Rider Payout: Only numbers are allowed')
+        return
+      }
+    }
+
+    if (formData.company_payout && formData.company_payout.trim()) {
+      const payoutRegex = /^[0-9]+(\.[0-9]{1,2})?$/
+      if (!payoutRegex.test(formData.company_payout)) {
+        alert('⚠️ Company Payout: Only numbers are allowed')
         return
       }
     }
@@ -259,10 +300,8 @@ const Products = () => {
         merchant_id: selectedMerchant.id,
         assigned_to: formData.assigned_to || null,
         parcel_status: formData.parcel_status.replace(/ /g, '_'),
-        client_email: formData.client_email.trim() || null // Ensure email is sent
+        client_email: formData.client_email.trim() || null
       }
-      console.log('Sending data with merchant_id:', dataToSend)
-      console.log('Client email being sent:', dataToSend.client_email)
       
       const response = await axios.post('http://127.0.0.1:8000/api/parcels', dataToSend, { timeout: 30000 })
       const data = response.data
@@ -270,13 +309,11 @@ const Products = () => {
       
       setNewParcelId(parcelId)
       
-      // Show AI assignment result
       const assignedRider = data.assigned_rider_name || 'N/A'
       const aiStatus = data.ai_assignment === 'success' ? '✅ AI assigned rider' : '⚠️ No rider available in city'
       const emailStatus = data.email_sent ? '\n📧 Email sent to client' : ''
       alert(`✅ Parcel added successfully!\n\nTracking: ${data.tracking_code}\nAssigned to: ${assignedRider}\n${aiStatus}${emailStatus}`)
       
-      // Reset form
       setFormData({
         tracking_code: '',
         client_name: '',
@@ -292,11 +329,9 @@ const Products = () => {
         company_payout: ''
       })
       
-      // Close form and reset merchant
       setParcelFormOpen(false)
       setSelectedMerchant(null)
       
-      // Generate new tracking code
       axios.get('http://127.0.0.1:8000/api/generate-tracking-code')
         .then(response => {
           setFormData(prev => ({
@@ -304,13 +339,11 @@ const Products = () => {
             tracking_code: response.data.tracking_code
           }))
         })
-        .catch(err => console.log('Tracking code generation failed:', err))
+        .catch(err => {})
       
-      // Refresh parcels list
       await fetchParcels()
       
     } catch (error) {
-      console.error('Submit error:', error)
       const errorMessages = error.response?.data?.errors 
         ? Object.values(error.response.data.errors).flat().join(', ')
         : error.response?.data?.message || error.message || 'Error adding parcel'
@@ -350,22 +383,18 @@ const Products = () => {
         assigned_to: formData.assigned_to === '' ? null : formData.assigned_to,
         parcel_status: formData.parcel_status.replace(/ /g, '_')
       }
-      console.log('Sending data:', dataToSend)
-      console.log('Assigned to value:', dataToSend.assigned_to)
-      const response = await axios.put(`http://127.0.0.1:8000/api/parcels/${editingParcel.parcel_id}`, dataToSend, { timeout: 10000 })
-      console.log('Backend response:', response.data)
+      await axios.put(`http://127.0.0.1:8000/api/parcels/${editingParcel.parcel_id}`, dataToSend, { timeout: 10000 })
       setEditOpen(false)
       setEditingParcel(null)
       await fetchParcels()
       alert('Parcel updated successfully!')
     } catch (error) {
-      console.error('Update error:', error.response?.data)
       const errorMessages = error.response?.data?.errors 
         ? Object.values(error.response.data.errors).flat().join(', ')
         : error.response?.data?.message || 'Error updating parcel'
       alert(`Error: ${errorMessages}`)
     }
-  }, [editingParcel, formData, fetchParcels])
+  }, [formData, editingParcel, fetchParcels])
 
   const handleApprovePickup = useCallback(async (parcelId) => {
     if (!confirm('Approve pickup for this parcel?')) return
@@ -396,9 +425,7 @@ const Products = () => {
 
   const handleRetryAssignments = useCallback(async () => {
     try {
-      console.log('Calling auto-assign-pending API...')
       const response = await axios.post('http://127.0.0.1:8000/api/auto-assign-pending')
-      console.log('Response:', response.data)
       
       const assignedCount = response.data.assigned || 0
       if (assignedCount > 0) {
@@ -409,7 +436,6 @@ const Products = () => {
       
       await fetchParcels()
     } catch (error) {
-      console.error('Auto-assign error:', error.response?.data || error.message)
       alert(`❌ Error: ${error.response?.data?.message || 'Failed to retry assignments'}`)  
     }
   }, [fetchParcels])
@@ -462,6 +488,28 @@ const Products = () => {
     }
   }, [])
 
+  const handleOpenMap = (type) => {
+    setMapType(type)
+    setMapOpen(true)
+  }
+
+  const handleMapSelect = (locationData) => {
+    if (mapType === 'pickup') {
+      setFormData(prev => ({
+        ...prev,
+        pickup_location: locationData.address,
+        pickup_city: locationData.city
+      }))
+    } else if (mapType === 'client') {
+      setFormData(prev => ({
+        ...prev,
+        client_address: locationData.address
+      }))
+    }
+    setMapOpen(false)
+  }
+
+  // OPTIMIZED: Memoize parcels to prevent unnecessary re-renders
   const memoizedParcels = useMemo(() => parcels, [parcels])
 
   if (loading) {
@@ -519,7 +567,85 @@ const Products = () => {
                   {item.pickup_location || 'N/A'}
                   {item.pickup_city && <>, {item.pickup_city}</>}
                 </TableCell>
-                <TableCell>{item.assigned_to || 'N/A'}</TableCell>
+                <TableCell>
+                  {item.assigned_to ? (
+                    // Rider accepted - show only that rider
+                    <Box sx={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      gap: 1,
+                      padding: '8px 16px',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      borderRadius: '20px',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)'
+                    }}>
+                      <CheckCircle sx={{ fontSize: 18 }} />
+                      Rider #{item.assigned_to}
+                    </Box>
+                  ) : (
+                    // Pending - show all 3 riders who got request
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      {riderRequests[item.parcel_id]?.length > 0 ? (
+                        riderRequests[item.parcel_id].map((req, idx) => (
+                          <Box 
+                            key={idx}
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              padding: '6px 12px',
+                              background: req.request_status === 'accepted' 
+                                ? 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)'
+                                : req.request_status === 'rejected'
+                                ? 'linear-gradient(135deg, #eb3349 0%, #f45c43 100%)'
+                                : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                              borderRadius: '15px',
+                              color: 'white',
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                transform: 'translateY(-2px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.25)'
+                              }
+                            }}
+                          >
+                            {req.request_status === 'pending' && '⏳'}
+                            {req.request_status === 'accepted' && '✅'}
+                            {req.request_status === 'rejected' && '❌'}
+                            Rider #{req.rider_id}
+                            {req.rider_score && (
+                              <Chip 
+                                label={`Score: ${req.rider_score}`} 
+                                size="small" 
+                                sx={{ 
+                                  height: '20px', 
+                                  fontSize: '11px',
+                                  backgroundColor: 'rgba(255,255,255,0.3)',
+                                  color: 'white',
+                                  fontWeight: 'bold'
+                                }} 
+                              />
+                            )}
+                          </Box>
+                        ))
+                      ) : (
+                        <Chip 
+                          label="N/A" 
+                          size="small" 
+                          sx={{ 
+                            background: 'linear-gradient(135deg, #bdc3c7 0%, #2c3e50 100%)',
+                            color: 'white',
+                            fontWeight: 'bold'
+                          }} 
+                        />
+                      )}
+                    </Box>
+                  )}
+                </TableCell>
                 <TableCell>
                   <Chip 
                     label={item.parcel_status || 'pending'} 
@@ -651,11 +777,27 @@ const Products = () => {
         <DialogContent>
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
             <TextField name="tracking_code" label="Tracking Code (Auto-generated)" value={formData.tracking_code} fullWidth disabled />
-            <TextField name="client_name" label="Client Name" value={formData.client_name} onChange={handleChange} fullWidth />
-            <TextField name="client_phone_number" label="Phone" value={formData.client_phone_number} onChange={handleChange} fullWidth />
-            <TextField name="client_address" label="Address" value={formData.client_address} onChange={handleChange} fullWidth />
-            <TextField name="client_email" label="Email" value={formData.client_email} onChange={handleChange} fullWidth />
-            <TextField name="pickup_location" label="Pickup Location *" value={formData.pickup_location} onChange={handleChange} fullWidth required />
+            <TextField name="client_name" label="Client Name *" value={formData.client_name} onChange={handleChange} fullWidth autoComplete="off" />
+            <TextField name="client_phone_number" label="Phone Number *" value={formData.client_phone_number} onChange={handleChange} fullWidth autoComplete="off" />
+            <TextField name="client_address" label="Client Address *" value={formData.client_address} onChange={handleChange} fullWidth 
+              InputProps={{
+                endAdornment: (
+                  <IconButton onClick={() => handleOpenMap('client')} color="primary">
+                    <LocationOn />
+                  </IconButton>
+                )
+              }}
+            />
+            <TextField name="client_email" label="Email (Optional)" value={formData.client_email} onChange={handleChange} fullWidth type="email" />
+            <TextField name="pickup_location" label="Pickup Location *" value={formData.pickup_location} onChange={handleChange} fullWidth 
+              InputProps={{
+                endAdornment: (
+                  <IconButton onClick={() => handleOpenMap('pickup')} color="primary">
+                    <LocationOn />
+                  </IconButton>
+                )
+              }}
+            />
             <FormControl fullWidth>
               <InputLabel>Pickup City *</InputLabel>
               <Select name="pickup_city" value={formData.pickup_city} onChange={handleChange} label="Pickup City *" required>
@@ -675,9 +817,14 @@ const Products = () => {
                 ))}
               </Select>
             </FormControl>
-            <TextField name="payment_method" label="Payment Method" value={formData.payment_method} onChange={handleChange} fullWidth />
-            <TextField name="rider_payout" label="Rider Payout" type="number" value={formData.rider_payout} onChange={handleChange} fullWidth />
-            <TextField name="company_payout" label="Company Payout" type="number" value={formData.company_payout} onChange={handleChange} fullWidth />
+            <FormControl fullWidth>
+              <InputLabel>Payment Method</InputLabel>
+              <Select name="payment_method" value={formData.payment_method} onChange={handleChange} label="Payment Method">
+                {paymentMethods.map(method => <MenuItem key={method} value={method}>{method}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <TextField name="rider_payout" label="Rider Payout" value={formData.rider_payout} onChange={handleChange} fullWidth />
+            <TextField name="company_payout" label="Company Payout" value={formData.company_payout} onChange={handleChange} fullWidth />
           </Box>
         </DialogContent>
         <DialogActions>
@@ -780,10 +927,26 @@ const Products = () => {
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
             <TextField name="tracking_code" label="Tracking Code" value={formData.tracking_code} onChange={handleChange} fullWidth disabled />
             <TextField name="client_name" label="Client Name" value={formData.client_name} onChange={handleChange} fullWidth />
-            <TextField name="client_phone_number" label="Phone" value={formData.client_phone_number} onChange={handleChange} fullWidth />
-            <TextField name="client_address" label="Address" value={formData.client_address} onChange={handleChange} fullWidth />
-            <TextField name="client_email" label="Email" value={formData.client_email} onChange={handleChange} fullWidth />
-            <TextField name="pickup_location" label="Pickup Location" value={formData.pickup_location} onChange={handleChange} fullWidth />
+            <TextField name="client_phone_number" label="Phone Number" value={formData.client_phone_number} onChange={handleChange} fullWidth />
+            <TextField name="client_address" label="Address" value={formData.client_address} onChange={handleChange} fullWidth 
+              InputProps={{
+                endAdornment: (
+                  <IconButton onClick={() => handleOpenMap('client')} color="primary">
+                    <LocationOn />
+                  </IconButton>
+                )
+              }}
+            />
+            <TextField name="client_email" label="Email" value={formData.client_email} onChange={handleChange} fullWidth type="email" />
+            <TextField name="pickup_location" label="Pickup Location" value={formData.pickup_location} onChange={handleChange} fullWidth 
+              InputProps={{
+                endAdornment: (
+                  <IconButton onClick={() => handleOpenMap('pickup')} color="primary">
+                    <LocationOn />
+                  </IconButton>
+                )
+              }}
+            />
             <FormControl fullWidth>
               <InputLabel>Pickup City</InputLabel>
               <Select name="pickup_city" value={formData.pickup_city} onChange={handleChange} label="Pickup City">
@@ -811,9 +974,14 @@ const Products = () => {
                 ))}
               </Select>
             </FormControl>
-            <TextField name="payment_method" label="Payment Method" value={formData.payment_method} onChange={handleChange} fullWidth />
-            <TextField name="rider_payout" label="Rider Payout" type="number" value={formData.rider_payout} onChange={handleChange} fullWidth />
-            <TextField name="company_payout" label="Company Payout" type="number" value={formData.company_payout} onChange={handleChange} fullWidth />
+            <FormControl fullWidth>
+              <InputLabel>Payment Method</InputLabel>
+              <Select name="payment_method" value={formData.payment_method} onChange={handleChange} label="Payment Method">
+                {paymentMethods.map(method => <MenuItem key={method} value={method}>{method}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <TextField name="rider_payout" label="Rider Payout" value={formData.rider_payout} onChange={handleChange} fullWidth />
+            <TextField name="company_payout" label="Company Payout" value={formData.company_payout} onChange={handleChange} fullWidth />
           </Box>
         </DialogContent>
         <DialogActions>
@@ -821,8 +989,16 @@ const Products = () => {
           <Button onClick={handleEditSubmit} variant="contained">Update</Button>
         </DialogActions>
       </Dialog>
+
+      <FreeMapPicker
+        open={mapOpen}
+        onClose={() => setMapOpen(false)}
+        onSelectLocation={handleMapSelect}
+        title={mapType === 'pickup' ? 'Select Pickup Location' : 'Select Client Address'}
+        initialCity={formData.pickup_city}
+      />
     </div>
   )
 }
 
-export default memo(Products)
+export default Products

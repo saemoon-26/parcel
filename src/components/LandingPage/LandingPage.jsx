@@ -92,7 +92,7 @@ function LandingPage() {
             <p className="hero-subtitle">Delivering happiness to your doorstep with speed, care, and precision</p>
             <div className="hero-buttons">
               <button className="btn-primary" onClick={() => {
-                console.log('Track Parcel button clicked!')
+
                 navigate('/track')
               }}>
                 <span>Track Parcel</span>

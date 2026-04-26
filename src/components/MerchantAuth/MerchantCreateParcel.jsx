@@ -19,8 +19,31 @@ const MerchantCreateParcel = ({ merchantData, onParcelCreated }) => {
     delivery_charges: ''
   })
 
+  const [errors, setErrors] = useState({})
+
+  const validateAddress = (address, city) => {
+    const addressLower = address.toLowerCase()
+    const cityLower = city.toLowerCase()
+    
+    if (!addressLower.includes(cityLower)) {
+      return `Address must include the city name "${city}"`
+    }
+    return null
+  }
+
   const handleParcelSubmit = async (e) => {
     e.preventDefault()
+    
+    // Validate receiver address contains city name
+    const addressError = validateAddress(parcelForm.receiver_address, parcelForm.receiver_city)
+    if (addressError) {
+      setErrors({ receiver_address: addressError })
+      alert(addressError)
+      return
+    }
+    
+    setErrors({})
+    
     try {
       const response = await axios.post('http://127.0.0.1:8000/api/parcels', {
         ...parcelForm,

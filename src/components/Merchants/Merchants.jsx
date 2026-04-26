@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, memo, useRef, useCallback } from 'react'
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Box, IconButton, Tooltip } from '@mui/material'
-import { Edit, Delete, Visibility, CheckCircle, Cancel } from '@mui/icons-material'
+import { useState, useEffect, useMemo, memo, useCallback } from 'react'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Box, IconButton, Tooltip, Avatar, Typography } from '@mui/material'
+import { Edit, Delete, Visibility, CheckCircle, Cancel, Person, Phone, Email, Home, Business, LocationOn, Description, Badge } from '@mui/icons-material'
 import axios from 'axios'
 
 const Merchants = memo(function Merchants() {
@@ -11,19 +11,21 @@ const Merchants = memo(function Merchants() {
   const [viewOpen, setViewOpen] = useState(false)
   const [selectedMerchant, setSelectedMerchant] = useState(null)
   const [editingMerchant, setEditingMerchant] = useState(null)
-  const formDataRef = useRef({
-    first_name: '',
-    last_name: '',
+  const [formData, setFormData] = useState({
+    business_name: '',
+    owner_name: '',
     email: '',
-    per_parcel_payout: '',
-    company_name: '',
-    per_parcel_rate: '',
+    phone_number: '',
+    password: '',
+    full_address: '',
     city: '',
-    address: '',
-    country: '',
     state: '',
-    zipcode: ''
+    country: '',
+    postal_code: '',
+    product_type: '',
+    business_document: null
   })
+  const [documentFile, setDocumentFile] = useState(null)
 
   useEffect(() => {
     const fetchMerchants = async () => {
@@ -31,10 +33,9 @@ const Merchants = memo(function Merchants() {
         const response = await axios.get("http://127.0.0.1:8000/api/merchants", {
           timeout: 5000
         })
-        console.log('Merchants data:', response.data.data)
         setMerchants(response.data.data)
       } catch (error) {
-        console.error('API Error:', error)
+        
         if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
           alert('Backend server is not running. Please start your Laravel server.')
         }
@@ -47,28 +48,31 @@ const Merchants = memo(function Merchants() {
   }, [])
 
   const handleFieldChange = (field) => (e) => {
-    const value = e.target.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
-    formDataRef.current[field] = value
+    if (field === 'business_document') {
+      const file = e.target.files[0]
+      setDocumentFile(file)
+      setFormData(prev => ({ ...prev, [field]: file }))
+    } else {
+      const value = e.target.value
+      setFormData(prev => ({ ...prev, [field]: value }))
+    }
   }
 
   const handleSubmit = async () => {
-    // Validate required fields
     const requiredFields = {
-      first_name: 'First Name',
-      last_name: 'Last Name', 
+      business_name: 'Business Name',
+      owner_name: 'Owner Name',
       email: 'Email',
-      company_name: 'Company Name',
-      per_parcel_rate: 'Per Parcel Rate',
+      phone_number: 'Phone Number',
+      password: 'Password',
+      full_address: 'Full Address',
       city: 'City',
-      address: 'Address',
-      country: 'Country',
-      state: 'State',
-      zipcode: 'Zipcode'
+      postal_code: 'Postal Code'
     }
     
     const missingFields = []
     Object.keys(requiredFields).forEach(field => {
-      if (!formDataRef.current[field] || formDataRef.current[field].toString().trim() === '') {
+      if (!formData[field] || formData[field].toString().trim() === '') {
         missingFields.push(requiredFields[field])
       }
     })
@@ -79,31 +83,40 @@ const Merchants = memo(function Merchants() {
     }
     
     try {
-      console.log('Sending merchant data:', formDataRef.current)
+      const submitData = new FormData()
+      Object.keys(formData).forEach(key => {
+        if (key === 'business_document' && documentFile) {
+          submitData.append(key, documentFile)
+        } else if (formData[key] !== null && formData[key] !== '') {
+          submitData.append(key, formData[key])
+        }
+      })
       
-      const response = await axios.post('http://127.0.0.1:8000/api/merchants', formDataRef.current)
-      console.log('Success response:', response.data)
+      const response = await axios.post('http://127.0.0.1:8000/api/merchants', submitData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
       
       setOpen(false)
-      formDataRef.current = {
-        first_name: '',
-        last_name: '',
+      setFormData({
+        business_name: '',
+        owner_name: '',
         email: '',
-        per_parcel_payout: '',
-        company_name: '',
-        per_parcel_rate: '',
+        phone_number: '',
+        password: '',
+        full_address: '',
         city: '',
-        address: '',
-        country: '',
         state: '',
-        zipcode: ''
-      }
+        country: '',
+        postal_code: '',
+        product_type: '',
+        business_document: null
+      })
+      setDocumentFile(null)
       const refreshResponse = await axios.get("http://127.0.0.1:8000/api/merchants")
       setMerchants(refreshResponse.data.data)
       alert('Merchant added successfully!')
     } catch (error) {
-      console.error('Error adding merchant:', error)
-      console.error('Error response:', error.response?.data)
+      
       
       if (error.response?.status === 500) {
         alert('Server Error: Please check if the backend server is running and database is connected.')
@@ -119,19 +132,20 @@ const Merchants = memo(function Merchants() {
 
   const handleEdit = useCallback((merchant) => {
     setEditingMerchant(merchant)
-    formDataRef.current = {
-      first_name: merchant.first_name || '',
-      last_name: merchant.last_name || '',
+    setFormData({
+      business_name: merchant.company?.company_name || '',
+      owner_name: merchant.first_name || '',
       email: merchant.email || '',
-      per_parcel_payout: merchant.per_parcel_payout || '',
-      company_name: merchant.company_name || merchant.company?.company_name || '',
-      per_parcel_rate: merchant.per_parcel_rate || merchant.company?.per_parcel_rate || '',
+      phone_number: merchant.phone || '',
+      full_address: merchant.company?.address || '',
       city: merchant.address?.city || '',
-      address: merchant.address?.address || '',
-      country: merchant.address?.country || '',
       state: merchant.address?.state || '',
-      zipcode: merchant.address?.zipcode || ''
-    }
+      country: merchant.address?.country || '',
+      postal_code: merchant.address?.zipcode || '',
+      product_type: merchant.company?.product_type || '',
+      business_document: null
+    })
+    setDocumentFile(null)
     setEditOpen(true)
   }, [])
 
@@ -148,7 +162,7 @@ const Merchants = memo(function Merchants() {
         setMerchants(response.data.data)
         alert('Merchant approved successfully!')
       } catch (error) {
-        console.error('Error approving merchant:', error)
+        
         alert('Error approving merchant')
       }
     }
@@ -162,7 +176,7 @@ const Merchants = memo(function Merchants() {
         setMerchants(response.data.data)
         alert('Merchant rejected successfully!')
       } catch (error) {
-        console.error('Error rejecting merchant:', error)
+        
         alert('Error rejecting merchant')
       }
     }
@@ -176,7 +190,7 @@ const Merchants = memo(function Merchants() {
         setMerchants(response.data.data)
         alert('Merchant deleted successfully!')
       } catch (error) {
-        console.error('Error deleting merchant:', error)
+        
         const errorMessage = error.response?.status === 500 
           ? 'Server error: Cannot delete merchant. It may be associated with other records.'
           : error.response?.data?.message || 'Error deleting merchant'
@@ -187,31 +201,44 @@ const Merchants = memo(function Merchants() {
 
   const handleEditSubmit = async () => {
     try {
-      await axios.put(`http://127.0.0.1:8000/api/merchants/${editingMerchant.id}`, formDataRef.current)
+      const submitData = new FormData()
+      Object.keys(formData).forEach(key => {
+        if (key === 'business_document' && documentFile) {
+          submitData.append(key, documentFile)
+        } else if (formData[key] !== null && formData[key] !== '') {
+          submitData.append(key, formData[key])
+        }
+      })
+      
+      await axios.post(`http://127.0.0.1:8000/api/merchants/${editingMerchant.id}?_method=PUT`, submitData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      
       setEditOpen(false)
       setEditingMerchant(null)
-      formDataRef.current = {
-        first_name: '',
-        last_name: '',
+      setFormData({
+        business_name: '',
+        owner_name: '',
         email: '',
-        per_parcel_payout: '',
-        company_name: '',
-        per_parcel_rate: '',
+        phone_number: '',
+        full_address: '',
         city: '',
-        address: '',
-        country: '',
         state: '',
-        zipcode: ''
-      }
+        country: '',
+        postal_code: '',
+        product_type: '',
+        business_document: null
+      })
+      setDocumentFile(null)
       const response = await axios.get("http://127.0.0.1:8000/api/merchants")
       setMerchants(response.data.data)
       alert('Merchant updated successfully!')
     } catch (error) {
-      console.error('Error updating merchant:', error)
+      
       
       const errorMessages = error.response?.data?.errors 
         ? Object.values(error.response.data.errors).flat().join(', ')
-        : 'Please check console for details'
+        : error.response?.data?.message || 'Please check console for details'
       
       alert(`Validation Error: ${errorMessages}`)
     }
@@ -256,13 +283,23 @@ const Merchants = memo(function Merchants() {
                   </span>
                 </TableCell>
                 <TableCell>
-                  <Box display="flex" gap={1} sx={{ minWidth: '180px' }}>
+                  <Box display="flex" gap={1}>
                     <Tooltip title="View Details">
                       <IconButton size="small" color="info" onClick={() => handleView(merchant)}>
                         <Visibility />
                       </IconButton>
                     </Tooltip>
-                    {merchant.approval_status === 'pending' ? (
+                    <Tooltip title="Edit">
+                      <IconButton size="small" color="primary" onClick={() => handleEdit(merchant)}>
+                        <Edit />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton size="small" color="error" onClick={() => handleDelete(merchant.id)}>
+                        <Delete />
+                      </IconButton>
+                    </Tooltip>
+                    {merchant.approval_status === 'pending' && (
                       <>
                         <Tooltip title="Approve">
                           <IconButton size="small" style={{color: '#4caf50'}} onClick={() => handleApprove(merchant.id)}>
@@ -275,14 +312,7 @@ const Merchants = memo(function Merchants() {
                           </IconButton>
                         </Tooltip>
                       </>
-                    ) : (
-                      <Box sx={{ width: '80px' }} />
                     )}
-                    <Tooltip title="Delete">
-                      <IconButton size="small" color="error" onClick={() => handleDelete(merchant.id)}>
-                        <Delete />
-                      </IconButton>
-                    </Tooltip>
                   </Box>
                 </TableCell>
               </TableRow>
@@ -316,85 +346,93 @@ const Merchants = memo(function Merchants() {
         <DialogTitle>Add New Merchant</DialogTitle>
         <DialogContent>
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
-            <Box display="flex" gap={2}>
-              <TextField
-                label="First Name"
-                defaultValue={formDataRef.current.first_name}
-                onChange={handleFieldChange('first_name')}
-                fullWidth
-              />
-              <TextField
-                label="Last Name"
-                defaultValue={formDataRef.current.last_name}
-                onChange={handleFieldChange('last_name')}
-                fullWidth
-              />
-            </Box>
             <TextField
-              label="Email"
+              label="Business Name *"
+              value={formData.business_name}
+              onChange={handleFieldChange('business_name')}
+              fullWidth
+            />
+            <TextField
+              label="Owner Name *"
+              value={formData.owner_name}
+              onChange={handleFieldChange('owner_name')}
+              fullWidth
+            />
+            <TextField
+              label="Email *"
               type="email"
-              defaultValue={formDataRef.current.email}
+              value={formData.email}
               onChange={handleFieldChange('email')}
               fullWidth
             />
             <TextField
-              label="Per Parcel Payout"
-              type="number"
-              defaultValue={formDataRef.current.per_parcel_payout}
-              onChange={handleFieldChange('per_parcel_payout')}
+              label="Phone Number *"
+              value={formData.phone_number}
+              onChange={handleFieldChange('phone_number')}
               fullWidth
             />
-            <Box display="flex" gap={2}>
-              <TextField
-                label="Company Name"
-                defaultValue={formDataRef.current.company_name}
-                onChange={handleFieldChange('company_name')}
-                fullWidth
-              />
-              <TextField
-                label="Per Parcel Rate"
-                type="number"
-                defaultValue={formDataRef.current.per_parcel_rate}
-                onChange={handleFieldChange('per_parcel_rate')}
-                fullWidth
-              />
-            </Box>
-            <Box display="flex" gap={2}>
-              <TextField
-                label="City"
-                defaultValue={formDataRef.current.city}
-                onChange={handleFieldChange('city')}
-                fullWidth
-              />
-              <TextField
-                label="State"
-                defaultValue={formDataRef.current.state}
-                onChange={handleFieldChange('state')}
-                fullWidth
-              />
-            </Box>
             <TextField
-              label="Address"
-              defaultValue={formDataRef.current.address}
-              onChange={handleFieldChange('address')}
+              label="Password *"
+              type="password"
+              value={formData.password}
+              onChange={handleFieldChange('password')}
+              fullWidth
+            />
+            <TextField
+              label="Full Address *"
+              value={formData.full_address}
+              onChange={handleFieldChange('full_address')}
               fullWidth
               multiline
               rows={2}
             />
             <Box display="flex" gap={2}>
               <TextField
+                label="City *"
+                value={formData.city}
+                onChange={handleFieldChange('city')}
+                fullWidth
+              />
+              <TextField
+                label="State"
+                value={formData.state}
+                onChange={handleFieldChange('state')}
+                fullWidth
+              />
+            </Box>
+            <Box display="flex" gap={2}>
+              <TextField
                 label="Country"
-                defaultValue={formDataRef.current.country}
+                value={formData.country}
                 onChange={handleFieldChange('country')}
                 fullWidth
               />
               <TextField
-                label="Zipcode"
-                defaultValue={formDataRef.current.zipcode}
-                onChange={handleFieldChange('zipcode')}
+                label="Postal Code *"
+                value={formData.postal_code}
+                onChange={handleFieldChange('postal_code')}
                 fullWidth
               />
             </Box>
+            <TextField
+              label="Product Type"
+              value={formData.product_type}
+              onChange={handleFieldChange('product_type')}
+              fullWidth
+            />
+            <Button
+              variant="outlined"
+              component="label"
+              fullWidth
+            >
+              {documentFile ? `✓ ${documentFile.name}` : 'Upload Business Document'}
+              <input
+                type="file"
+                hidden
+                accept="image/*,application/pdf"
+                onChange={handleFieldChange('business_document')}
+              />
+            </Button>
           </Box>
         </DialogContent>
         <DialogActions>
@@ -407,85 +445,93 @@ const Merchants = memo(function Merchants() {
         <DialogTitle>Edit Merchant</DialogTitle>
         <DialogContent>
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
-            <Box display="flex" gap={2}>
-              <TextField
-                label="First Name"
-                defaultValue={formDataRef.current.first_name}
-                onChange={handleFieldChange('first_name')}
-                fullWidth
-              />
-              <TextField
-                label="Last Name"
-                defaultValue={formDataRef.current.last_name}
-                onChange={handleFieldChange('last_name')}
-                fullWidth
-              />
-            </Box>
+            <TextField
+              label="Business Name"
+              value={formData.business_name}
+              onChange={handleFieldChange('business_name')}
+              fullWidth
+            />
+            <TextField
+              label="Owner Name"
+              value={formData.owner_name}
+              onChange={handleFieldChange('owner_name')}
+              fullWidth
+            />
             <TextField
               label="Email"
               type="email"
-              defaultValue={formDataRef.current.email}
+              value={formData.email}
               onChange={handleFieldChange('email')}
               fullWidth
             />
             <TextField
-              label="Per Parcel Payout"
-              type="number"
-              defaultValue={formDataRef.current.per_parcel_payout}
-              onChange={handleFieldChange('per_parcel_payout')}
+              label="Phone Number"
+              value={formData.phone_number}
+              onChange={handleFieldChange('phone_number')}
               fullWidth
             />
-            <Box display="flex" gap={2}>
-              <TextField
-                label="Company Name"
-                defaultValue={formDataRef.current.company_name}
-                onChange={handleFieldChange('company_name')}
-                fullWidth
-              />
-              <TextField
-                label="Per Parcel Rate"
-                type="number"
-                defaultValue={formDataRef.current.per_parcel_rate}
-                onChange={handleFieldChange('per_parcel_rate')}
-                fullWidth
-              />
-            </Box>
-            <Box display="flex" gap={2}>
-              <TextField
-                label="City"
-                defaultValue={formDataRef.current.city}
-                onChange={handleFieldChange('city')}
-                fullWidth
-              />
-              <TextField
-                label="State"
-                defaultValue={formDataRef.current.state}
-                onChange={handleFieldChange('state')}
-                fullWidth
-              />
-            </Box>
             <TextField
-              label="Address"
-              defaultValue={formDataRef.current.address}
-              onChange={handleFieldChange('address')}
+              label="Full Address"
+              value={formData.full_address}
+              onChange={handleFieldChange('full_address')}
               fullWidth
               multiline
               rows={2}
             />
             <Box display="flex" gap={2}>
               <TextField
+                label="City"
+                value={formData.city}
+                onChange={handleFieldChange('city')}
+                fullWidth
+              />
+              <TextField
+                label="State"
+                value={formData.state}
+                onChange={handleFieldChange('state')}
+                fullWidth
+              />
+            </Box>
+            <Box display="flex" gap={2}>
+              <TextField
                 label="Country"
-                defaultValue={formDataRef.current.country}
+                value={formData.country}
                 onChange={handleFieldChange('country')}
                 fullWidth
               />
               <TextField
-                label="Zipcode"
-                defaultValue={formDataRef.current.zipcode}
-                onChange={handleFieldChange('zipcode')}
+                label="Postal Code"
+                value={formData.postal_code}
+                onChange={handleFieldChange('postal_code')}
                 fullWidth
               />
             </Box>
+            <TextField
+              label="Product Type"
+              value={formData.product_type}
+              onChange={handleFieldChange('product_type')}
+              fullWidth
+            />
+            <Button
+              variant="outlined"
+              component="label"
+              fullWidth
+            >
+              {documentFile ? `✓ ${documentFile.name}` : 'Upload New Business Document'}
+              <input
+                type="file"
+                hidden
+                accept="image/*,application/pdf"
+                onChange={handleFieldChange('business_document')}
+              />
+            </Button>
+            {editingMerchant?.company?.business_document && (
+              <Box sx={{ p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                <a href={`http://127.0.0.1:8000/storage/${editingMerchant.company.business_document}`} target="_blank" rel="noopener noreferrer">
+                  View Current Document
+                </a>
+              </Box>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>
@@ -494,31 +540,126 @@ const Merchants = memo(function Merchants() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Merchant Details</DialogTitle>
-        <DialogContent>
+      <Dialog 
+        open={viewOpen} 
+        onClose={() => setViewOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '20px',
+            overflow: 'hidden',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', padding: '24px', color: 'white', display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Avatar sx={{ width: 80, height: 80, border: '4px solid white', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+            <Business sx={{ fontSize: 40 }} />
+          </Avatar>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+              {selectedMerchant?.company?.company_name || 'Merchant Details'}
+            </Typography>
+            <Typography sx={{ opacity: 0.9 }}>ID: {selectedMerchant?.id}</Typography>
+          </Box>
+        </Box>
+        <DialogContent sx={{ padding: '24px', background: 'linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%)' }}>
           {selectedMerchant && (
-            <Box sx={{ mt: 2, p: 2 }}>
-              <p><strong>Business Name:</strong> {selectedMerchant.company?.company_name || 'N/A'}</p>
-              <p><strong>Owner Name:</strong> {selectedMerchant.first_name} {selectedMerchant.last_name}</p>
-              <p><strong>Email:</strong> {selectedMerchant.email || 'N/A'}</p>
-              <p><strong>Phone:</strong> {selectedMerchant.phone || 'N/A'}</p>
-              <p><strong>Address:</strong> {selectedMerchant.company?.address || 'N/A'}</p>
-              <p><strong>City:</strong> {selectedMerchant.address?.city || 'N/A'}</p>
-              <p><strong>Product Type:</strong> {selectedMerchant.company?.product_type || 'N/A'}</p>
-              <p><strong>Avg Parcels/Day:</strong> {selectedMerchant.company?.avg_parcels_per_day || 'N/A'}</p>
-              <p><strong>Per Parcel Rate:</strong> {selectedMerchant.company?.per_parcel_rate || 'N/A'}</p>
-              <p><strong>Bank Name:</strong> {selectedMerchant.company?.bank_name || 'N/A'}</p>
-              <p><strong>Account Number:</strong> {selectedMerchant.company?.account_number || 'N/A'}</p>
+            <div>
+              {/* Business Information */}
+              <Box sx={{ background: 'white', borderRadius: '16px', padding: '20px', marginBottom: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', transition: 'transform 0.3s ease, box-shadow 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }}>
+                <Typography sx={{ display: 'flex', alignItems: 'center', gap: 1.5, marginBottom: 2, paddingBottom: 1.5, borderBottom: '2px solid #1976d2', fontWeight: 600, fontSize: '1.1rem', color: '#1976d2' }}>
+                  <Business /> Business Information
+                </Typography>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Business fontSize="small" /> Business Name:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{selectedMerchant.company?.company_name || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Person fontSize="small" /> Owner Name:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{selectedMerchant.first_name} {selectedMerchant.last_name}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Email fontSize="small" /> Email:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{selectedMerchant.email || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Phone fontSize="small" /> Phone:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{selectedMerchant.phone || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Description fontSize="small" /> Product Type:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{selectedMerchant.company?.product_type || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Badge fontSize="small" /> Status:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>
+                    <span style={{
+                      padding: '4px 12px',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      backgroundColor: selectedMerchant.approval_status === 'approved' ? '#4caf50' : selectedMerchant.approval_status === 'rejected' ? '#f44336' : '#ff9800',
+                      color: 'white'
+                    }}>
+                      {selectedMerchant.approval_status || 'pending'}
+                    </span>
+                  </Box>
+                </Box>
+              </Box>
+              
+              {/* Location Information */}
+              <Box sx={{ background: 'white', borderRadius: '16px', padding: '20px', marginBottom: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', transition: 'transform 0.3s ease, box-shadow 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }}>
+                <Typography sx={{ display: 'flex', alignItems: 'center', gap: 1.5, marginBottom: 2, paddingBottom: 1.5, borderBottom: '2px solid #ff9800', fontWeight: 600, fontSize: '1.1rem', color: '#ff9800' }}>
+                  <LocationOn /> Location Information
+                </Typography>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><Home fontSize="small" /> Address:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{selectedMerchant.company?.address || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><LocationOn fontSize="small" /> City:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{selectedMerchant.address?.city || 'N/A'}</Box>
+                </Box>
+                <Box sx={{ display: 'flex', padding: '10px 0' }}>
+                  <Box sx={{ fontWeight: 600, color: '#555', minWidth: '160px', display: 'flex', alignItems: 'center', gap: 1 }}><LocationOn fontSize="small" /> Postal Code:</Box>
+                  <Box sx={{ color: '#333', flex: 1 }}>{selectedMerchant.address?.zipcode || 'N/A'}</Box>
+                </Box>
+              </Box>
+              
+              {/* Documents */}
               {selectedMerchant.company?.business_document && (
-                <p><strong>Business Document:</strong> <a href={`http://127.0.0.1:8000/storage/${selectedMerchant.company.business_document}`} target="_blank" rel="noopener noreferrer">View Document</a></p>
+                <Box sx={{ background: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', transition: 'transform 0.3s ease, box-shadow 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }}>
+                  <Typography sx={{ display: 'flex', alignItems: 'center', gap: 1.5, marginBottom: 2, paddingBottom: 1.5, borderBottom: '2px solid #4caf50', fontWeight: 600, fontSize: '1.1rem', color: '#4caf50' }}>
+                    <Description /> Business Document
+                  </Typography>
+                  <Button 
+                    variant="contained"
+                    onClick={() => window.open(`http://127.0.0.1:8000/storage/${selectedMerchant.company.business_document}`, '_blank')}
+                    sx={{ 
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      borderRadius: '12px',
+                      padding: '12px 24px',
+                      textTransform: 'capitalize',
+                      fontWeight: 500,
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)'
+                      }
+                    }}
+                  >
+                    View Business Document
+                  </Button>
+                </Box>
               )}
-              <p><strong>Status:</strong> {selectedMerchant.approval_status || 'pending'}</p>
-            </Box>
+            </div>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setViewOpen(false)}>Close</Button>
+        <DialogActions sx={{ padding: '16px 24px', background: '#f8f9fa' }}>
+          <Button onClick={() => setViewOpen(false)} variant="contained" sx={{ borderRadius: '12px', textTransform: 'none', px: 4 }}>Close</Button>
         </DialogActions>
       </Dialog>
     </div>
